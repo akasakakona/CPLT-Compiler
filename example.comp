@@ -4,6 +4,6 @@ itg fnc main () {
     a = 3 + 5
     b = a
     itg c[] = {2, 3, 4}
-    in()
+    b = in()
     out(a)
 }
