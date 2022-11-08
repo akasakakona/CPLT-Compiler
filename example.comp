@@ -1,1 +1,9 @@
-
+itg fnc main () {
+    itg a
+    itg b
+    a = 3 + 5
+    b = a
+    itg c[] = {2, 3, 4}
+    in()
+    out(a)
+}
