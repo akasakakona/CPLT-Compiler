@@ -1,0 +1,8 @@
+*.c
+*.h
+*.output
+.vscode
+calc
+*.out
+Test_Code/*
+cplt
