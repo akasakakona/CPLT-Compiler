@@ -45,7 +45,7 @@ char* mycont(char* a, char* b);
 %token COMMENT
 
 %%
-program: stmt
+program: 
 | program EOL stmt
 ;
 
@@ -84,6 +84,7 @@ expression: math_expr
 | ID L_PAREN parameter R_PAREN //funct_call
 | TRUE
 | FALSE
+| ID L_BRACK math_expr R_BRACK //array access
 ;
 
 math_expr: term addop math_expr
