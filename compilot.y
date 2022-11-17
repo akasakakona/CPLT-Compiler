@@ -3,6 +3,7 @@
 %{
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 int yylex();
 void yyerror(const char *s);
@@ -16,8 +17,8 @@ struct Bucket {
 };
 
 struct CodeNode{
-	string code;
-	string name;
+	char* code;
+	char* name;
 };
 
 int hash(char* a){
@@ -259,10 +260,10 @@ char* mycont(char* a, char* b){
 int main(int argc, char **argv)
 {
 	int i = 0;
-	for(int i = 0; i < 50; i++){
+	for(i = 0; i < 50; i++){
 		symbolTable[i] = NULL;
 	} //initialize symbol table
-	fp = fopen("output.txt", "r");
+	fp = fopen("output.txt", "w");
 	yyparse();
 	fclose(fp);
 	return 0;
