@@ -10,15 +10,16 @@ void yyerror(const char *s);
 char* mycont(char* a, char* b);
 
 struct Bucket {
-	char* name;
-	char* type;
-	char* value;
+	char name[16];
+	char type[16];
+	char value[125];
 	struct Bucket* next;
 };
 
 struct CodeNode{
 	char code[1024];
 	char name[16];
+	char type[16];
 };
 
 int hash(char* a){
@@ -55,16 +56,16 @@ void addSymbol(char* name, char* type, char* value, struct Bucket* table[]){
 	struct Bucket* temp = table[i];
 	while(temp != NULL){
 		if(strcmp(temp->name, name) == 0){
-			temp->type = type;
-			temp->value = value;
+			strcpy(temp->type, type);
+			strcpy(temp->value, value);
 			return;
 		}
 		temp = temp->next;
 	}
 	struct Bucket* new = (struct Bucket*)malloc(sizeof(struct Bucket));
-	new->name = name;
-	new->type = type;
-	new->value = value;
+	strcpy(new->name, name);
+	strcpy(new->type, type);
+	strcpy(new->value, value);
 	new->next = table[i];
 	table[i] = new;
 }
@@ -153,7 +154,8 @@ declaration: ID
 | ID ASSIGN array
 ;
 
-datatype: INTEGER
+datatype: INTEGER{
+}
 | BOOLEAN
 | STRING
 ;
