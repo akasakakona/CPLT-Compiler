@@ -17,8 +17,8 @@ struct Bucket {
 };
 
 struct CodeNode{
-	char* code;
-	char* name;
+	char code[1024];
+	char name[16];
 };
 
 int hash(char* a){
@@ -123,7 +123,7 @@ FILE* fp;
 %token COMMENT
 
 %%
-program: 
+program: stmt
 | program EOL stmt
 ;
 
@@ -145,11 +145,12 @@ assignment: expression
 | array
 ;
 
-declaration_stmt: datatype declaration;
+declaration_stmt: datatype declaration
+| datatype L_BRACK R_BRACK declaration;
 
 declaration: ID
 | ID ASSIGN expression
-| ID L_BRACK R_BRACK ASSIGN array
+| ID ASSIGN array
 ;
 
 datatype: INTEGER
