@@ -7,6 +7,83 @@
 int yylex();
 void yyerror(const char *s);
 char* mycont(char* a, char* b);
+
+struct Bucket {
+	char* name;
+	char* type;
+	char* value;
+	struct Bucket* next;
+};
+
+struct CodeNode{
+	string code;
+	string name;
+};
+
+int hash(char* a){
+	int i;
+	int sum = 0;
+	for(i = 0; i < strlen(a); i++){
+		sum += a[i];
+	}
+	return sum % 50;
+}
+
+void delSymbole(char* a, struct Bucket* table[]){
+	int i = hash(a);
+	struct Bucket* temp = table[i];
+	struct Bucket* prev = NULL;
+	while(temp != NULL){
+		if(strcmp(temp->name, a) == 0){
+			if(prev == NULL){
+				table[i] = temp->next;
+			}
+			else{
+				prev->next = temp->next;
+			}
+			free(temp);
+			return;
+		}
+		prev = temp;
+		temp = temp->next;
+	}
+}
+
+void addSymbol(char* name, char* type, char* value, struct Bucket* table[]){
+	int i = hash(name);
+	struct Bucket* temp = table[i];
+	while(temp != NULL){
+		if(strcmp(temp->name, name) == 0){
+			temp->type = type;
+			temp->value = value;
+			return;
+		}
+		temp = temp->next;
+	}
+	struct Bucket* new = (struct Bucket*)malloc(sizeof(struct Bucket));
+	new->name = name;
+	new->type = type;
+	new->value = value;
+	new->next = table[i];
+	table[i] = new;
+}
+
+struct Bucket* findSymbol(char* name, struct Bucket* table[]){
+	int i = hash(name);
+	struct Bucket* temp = table[i];
+	while(temp != NULL){
+		if(strcmp(temp->name, name) == 0){
+			return temp;
+		}
+		temp = temp->next;
+	}
+	return NULL;
+}
+
+struct Bucket* symbolTable[50];
+
+FILE* fp;
+
 %}
 
 %union {
@@ -181,7 +258,13 @@ char* mycont(char* a, char* b){
 
 int main(int argc, char **argv)
 {
+	int i = 0;
+	for(int i = 0; i < 50; i++){
+		symbolTable[i] = NULL;
+	} //initialize symbol table
+	fp = fopen("output.txt", "r");
 	yyparse();
+	fclose(fp);
 	return 0;
 
 }
