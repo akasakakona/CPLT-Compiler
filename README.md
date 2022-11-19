@@ -8,7 +8,7 @@ The generated IR will be in `.mil` format.
 
 The following command will generate the compiler binary for our language `compilot`:
 
-For Linux users, you can either manually type the following command OR using our included `compile.sh` file.
+You can either manually type the following command OR using our included `compile.sh` file.
 ```bash
 bison -v -d --file-prefix=y compilot.y
 flex compilot.lex
