@@ -82,6 +82,14 @@ struct Bucket* findSymbol(char* name, struct Bucket* table[]){
 	return NULL;
 }
 
+char* newTemp(){
+	static int i = 0;
+	char* temp = (char*)malloc(8);
+	sprintf(temp, "t%d", i);
+	i++;
+	return temp;
+}
+
 struct Bucket* symbolTable[50];
 
 FILE* fp;
@@ -146,12 +154,12 @@ assignment: expression
 | array
 ;
 
-declaration_stmt: datatype declaration
-| datatype L_BRACK R_BRACK declaration;
+declaration_stmt: datatype ID declaration
+| datatype L_BRACK R_BRACK ID declaration;
 
-declaration: ID
-| ID ASSIGN expression
-| ID ASSIGN array
+declaration: 
+| ASSIGN expression
+| ASSIGN array
 ;
 
 datatype: INTEGER{
