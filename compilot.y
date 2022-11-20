@@ -97,7 +97,8 @@ FILE* fp;
 %}
 
 %union {
-    char *str;
+    char* str;
+	struct CodeNode* node;
 }
 /* declare tokens */
 %token NUMBER
@@ -106,7 +107,6 @@ FILE* fp;
 %token STRING
 %token EOL
 %token END
-%type<str> NUMBER STRING
 %token STRING_LITERAL
 %token INTEGER
 %token BOOLEAN
@@ -117,7 +117,6 @@ FILE* fp;
 %token ELSE_IF
 %token BREAK
 %token RETURN
-%token DIGIT
 %token L_PAREN 
 %token R_PAREN
 %token L_BRACE
@@ -131,18 +130,22 @@ FILE* fp;
 %token FALSE
 %token COMMENT
 
+%type <node> datatype bool_expr math_expr boolop term addop mulop
+%type <str> TRUE FALSE ID
+
 %%
 program: stmt
 | program EOL stmt
 ;
 
 stmt: 
- | BREAK {printf(" break\n");}
+ | BREAK {printf("break");}
  | declaration_stmt {printf(" declaration_stmt\n");}
  | ID L_PAREN parameter R_PAREN {printf(" function_call\n");}
  | if_stmt {printf(" if_stmt\n");}
  | while_stmt {printf(" while_stmt\n");}
  | RETURN expression {printf(" return\n");}
+ | RETURN
  | assignment_stmt {printf(" assignment_stmt\n");}
  | datatype FUNCTION ID L_PAREN arguments R_PAREN L_BRACE EOL program EOL R_BRACE EOL {printf(" function\n");}
  | COMMENT {printf(" comment\n");}
@@ -163,9 +166,17 @@ declaration:
 ;
 
 datatype: INTEGER{
+	$$ = malloc(sizeof(struct CodeNode));
+	strcpy($$->type, "int");
 }
-| BOOLEAN
-| STRING
+| BOOLEAN{
+	$$ = malloc(sizeof(struct CodeNode));
+	strcpy($$->type, "bool");
+}
+| STRING{
+	$$ = malloc(sizeof(struct CodeNode));
+	strcpy($$->type, "str");
+}
 ;
 
 expression: math_expr
@@ -180,31 +191,150 @@ math_expr: term addop math_expr
 | term 
 ; 
 
-bool_expr: math_expr boolop math_expr
-| TRUE
-| FALSE
-| ID
-| ID L_PAREN parameter R_PAREN //funct_call
+bool_expr: math_expr boolop math_expr{
+	$$ = malloc(sizeof(struct CodeNode));
+	if(strcmp($1->type, $3->type) != 0){
+		yyerror("type mismatch");
+	}
+	strcpy($$->name, newTemp());
+	strcpy($$->code, $1->code); //get the code for the first math_expr
+	strcat($$->code, "\n");
+	strcat($$->code, $3->code); //get the code for the second math_expr
+	strcat($$->code, "\n");
+	strcat($$->code, $2->name); //get the comparison operator from boolop, we store the comparison operator in the name field of the CodeNode
+	strcat($$->code, " ");
+	strcat($$->code, $$->name); //get the variable name for the result
+	strcat($$->code, ", ");
+	strcat($$->code, $1->name); //get the variable name from the first math_expr
+	strcat($$->code, ", ");
+	strcat($$->code, $3->name); //get the variable name from the second math_expr
+	strcat($$->code, "\n");
+}
+| TRUE{
+	$$ = malloc(sizeof(struct CodeNode));
+	strcpy($$->type, "bool");
+	strcpy($$->name, "1");
+}
+| FALSE{
+	$$ = malloc(sizeof(struct CodeNode));
+	strcpy($$->type, "bool");
+	strcpy($$->name, "0");
+}
+| ID{
+	struct Bucket* var = findSymbol($1, symbolTable);
+	if(var == NULL){
+		yyerror("Undeclared variable");
+	}
+	if(strcmp(var->type, "bool") != 0){
+		yyerror("Type mismatch");
+	}
+	$$ = malloc(sizeof(struct CodeNode));
+	strcpy($$->type, var->type);
+	strcpy($$->name, var->value);
+}
+| ID L_PAREN parameter R_PAREN {
+	struct Bucket* funct = findSymbol($1, symbolTable);
+	if(funct == NULL){
+		yyerror("Undeclared function");
+	}
+	if(strcmp(funct->type, "bool") != 0){
+		yyerror("Type mismatch");
+	}
+	$$ = malloc(sizeof(struct CodeNode));
+	//here we are assuming that parameter will store a list of variable names containing the parameters in its code attribute
+	//separated by spaces. Therefore, we need to separate the parameters
+	strcpy($$->name, newTemp());
+	char temp[1024];
+	strcpy(temp, $3->code);
+	char* token = strtok(temp, " ");
+	while(token != NULL){
+		strcpy($$->code, "param ");
+		strcat($$->code, token);
+		strcat($$->code, "\n");
+		token = strtok(NULL, " ");
+	}
+	strcat($$->code, "call ");
+	strcat($$->code, $1);
+	strcat($$->code, ", ");
+	strcat($$->code, $$->name);
+	strcat($$->code, "\n");
+}
 ;
 
-boolop: EQUAL 
-| NE
-| SE
-| BE
-| SMALLER
-| BIGGER
+boolop: EQUAL {
+	$$ = malloc(sizeof(struct CodeNode));
+	strcpy($$->name, "==");
+}
+| NE{
+	$$ = malloc(sizeof(struct CodeNode));
+	strcpy($$->name, "!=");
+}
+| SE{
+	$$ = malloc(sizeof(struct CodeNode));
+	strcpy($$->name, "<=");
+}
+| BE{
+	$$ = malloc(sizeof(struct CodeNode));
+	strcpy($$->name, ">=");
+}
+| SMALLER{
+	$$ = malloc(sizeof(struct CodeNode));
+	strcpy($$->name, "<");
+}
+| BIGGER{
+	$$ = malloc(sizeof(struct CodeNode));
+	strcpy($$->name, ">");
+}
 ;
 
-addop : PLUS
-| MINUS
+
+//note: we store the additon/subtraction operator in the name field of the CodeNode
+addop : PLUS{
+	$$ = malloc(sizeof(struct CodeNode));
+	strcpy($$->name, "+");
+}
+| MINUS{
+	$$ = malloc(sizeof(struct CodeNode));
+	strcpy($$->name, "-");
+}
 ;
 
-term: term mulop factor
-| factor
+term: term mulop factor{
+	if(strcmp($1->type, $3->type) != 0){
+		yyerror("Type mismatch");
+	}
+	$$ = malloc(sizeof(struct CodeNode));
+	strcpy($$->type, $1->type);
+	strcpy($$->name, newTemp());
+	strcpy($$->code, $1->code);
+	strcat($$->code, "\n");
+	strcat($$->code, $3->code);
+	strcat($$->code, "\n");
+	strcat($$->code, $2->name); //get the multiplication/division operator from mulop, we store the operator in the name field of the CodeNode
+	strcat($$->code, " ");
+	strcat($$->code, $$->name); //get the variable name for the result
+	strcat($$->code, ", ");
+	strcat($$->code, $1->name); //get the variable name from the first term
+	strcat($$->code, ", ");
+	strcat($$->code, $3->name); //get the variable name from the second term
+	strcat($$->code, "\n");
+}
+| factor{
+	$$ = malloc(sizeof(struct CodeNode));
+	strcpy($$->type, $1->type);
+	strcpy($$->name, $1->name);
+	strcpy($$->code, $1->code);
+}
 ;
 
-mulop: MULT
-| DIV
+mulop: MULT{
+	$$ = malloc(sizeof(struct CodeNode));
+	strcpy($$->name, "*");
+}
+| DIV{
+	$$ = malloc(sizeof(struct CodeNode));
+	strcpy($$->name, "/");
+}
 ;
 
 factor: L_PAREN math_expr R_PAREN
