@@ -12,9 +12,25 @@ char* mycont(char* a, char* b);
 struct Bucket {
 	char name[16];
 	char type[16];
-	char value[125];
+	//char value[125];
+	char temVar[8];
 	struct Bucket* next;
 };
+
+/****
+itg a = 10
+itg b = 20
+itg c = b + a
+itg d
+d = 50
+****/
+
+/****
+= t1, 10
+= t2, 20
++ t3, t1, t2
+****/
+
 
 struct CodeNode{
 	char code[1024];
@@ -51,21 +67,30 @@ void delSymbole(char* a, struct Bucket* table[]){
 	}
 }
 
-void addSymbol(char* name, char* type, char* value, struct Bucket* table[]){
+//NOTE: FIX SYMBOL TABLE, NO MORE GLOBAL VARIABLE AND LOCAL VARIABLE
+//GLOBAL VARIABLE AND LOCAL VARIABLE SHOULD NOT HAVE THE SAME NAME
+//Or else, even though we may be able to distinguish them, it will enable
+//the user to declare multiple local variables with the same name
+
+void addSymbol(char* name, char* type, char* tempVar, struct Bucket* table[]){
 	int i = hash(name);
 	struct Bucket* temp = table[i];
-	while(temp != NULL){
+	while(temp != NULL){ //check if the symbol is already in the table
 		if(strcmp(temp->name, name) == 0){
-			strcpy(temp->type, type);
-			strcpy(temp->value, value);
+			yyerror("Repeated variable declaration");
 			return;
 		}
 		temp = temp->next;
 	}
+	//if not, add it to the table
 	struct Bucket* new = (struct Bucket*)malloc(sizeof(struct Bucket));
 	strcpy(new->name, name);
 	strcpy(new->type, type);
-	strcpy(new->value, value);
+	if(tempVar != NULL){
+		strcpy(new->temVar, tempVar);
+	}else{
+		strcpy(new->temVar, "");
+	}
 	new->next = table[i];
 	table[i] = new;
 }
@@ -130,7 +155,7 @@ FILE* fp;
 %token FALSE
 %token COMMENT
 
-%type <node> datatype bool_expr math_expr boolop term addop mulop
+%type <node> datatype bool_expr math_expr boolop term addop mulop factor
 %type <str> TRUE FALSE ID
 
 %%
@@ -158,23 +183,44 @@ assignment: expression
 ;
 
 declaration_stmt: datatype ID declaration
-| datatype L_BRACK R_BRACK ID declaration;
+| datatype L_BRACK R_BRACK ID declaration{
+	if(findSymbol($4, symbolTable) != NULL){
+		yyerror("redeclaration of variable");
+	}
+	char tempType[16];
+	strcpy(tempType, $1->type);
+	strcat(temp, "[]");
+	if($5->type[0] == '\0'){ //if the type field of declaration node is empty, then it is a declaration without assignment
+		//In that case, we do not need to generate a new temporary variable, therefore we use NULL as the third parameter
+		addSymbol($4, tempType, NULL, symbolTable);
+	}else{
+		addSymbol($4, tempType, newTemp(), symbolTable);
+		
+	}
+};
 
-declaration: 
-| ASSIGN expression
-| ASSIGN array
+declaration: {
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
+	strcpy($$->type, "");
+}
+| ASSIGN expression{
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
+	strcpy($$->code, $2->code);
+	strcpy($$->name, $2->name);
+	strcpy($$->type, $2->type);
+}
 ;
 
 datatype: INTEGER{
-	$$ = malloc(sizeof(struct CodeNode));
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
 	strcpy($$->type, "int");
 }
 | BOOLEAN{
-	$$ = malloc(sizeof(struct CodeNode));
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
 	strcpy($$->type, "bool");
 }
 | STRING{
-	$$ = malloc(sizeof(struct CodeNode));
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
 	strcpy($$->type, "str");
 }
 ;
@@ -185,6 +231,7 @@ expression: math_expr
 | TRUE
 | FALSE
 | ID L_BRACK math_expr R_BRACK //array access
+| array
 ;
 
 math_expr: term addop math_expr
@@ -192,7 +239,7 @@ math_expr: term addop math_expr
 ; 
 
 bool_expr: math_expr boolop math_expr{
-	$$ = malloc(sizeof(struct CodeNode));
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
 	if(strcmp($1->type, $3->type) != 0){
 		yyerror("type mismatch");
 	}
@@ -211,12 +258,12 @@ bool_expr: math_expr boolop math_expr{
 	strcat($$->code, "\n");
 }
 | TRUE{
-	$$ = malloc(sizeof(struct CodeNode));
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
 	strcpy($$->type, "bool");
 	strcpy($$->name, "1");
 }
 | FALSE{
-	$$ = malloc(sizeof(struct CodeNode));
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
 	strcpy($$->type, "bool");
 	strcpy($$->name, "0");
 }
@@ -228,7 +275,7 @@ bool_expr: math_expr boolop math_expr{
 	if(strcmp(var->type, "bool") != 0){
 		yyerror("Type mismatch");
 	}
-	$$ = malloc(sizeof(struct CodeNode));
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
 	strcpy($$->type, var->type);
 	strcpy($$->name, var->value);
 }
@@ -240,7 +287,7 @@ bool_expr: math_expr boolop math_expr{
 	if(strcmp(funct->type, "bool") != 0){
 		yyerror("Type mismatch");
 	}
-	$$ = malloc(sizeof(struct CodeNode));
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
 	//here we are assuming that parameter will store a list of variable names containing the parameters in its code attribute
 	//separated by spaces. Therefore, we need to separate the parameters
 	strcpy($$->name, newTemp());
@@ -262,27 +309,27 @@ bool_expr: math_expr boolop math_expr{
 ;
 
 boolop: EQUAL {
-	$$ = malloc(sizeof(struct CodeNode));
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
 	strcpy($$->name, "==");
 }
 | NE{
-	$$ = malloc(sizeof(struct CodeNode));
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
 	strcpy($$->name, "!=");
 }
 | SE{
-	$$ = malloc(sizeof(struct CodeNode));
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
 	strcpy($$->name, "<=");
 }
 | BE{
-	$$ = malloc(sizeof(struct CodeNode));
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
 	strcpy($$->name, ">=");
 }
 | SMALLER{
-	$$ = malloc(sizeof(struct CodeNode));
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
 	strcpy($$->name, "<");
 }
 | BIGGER{
-	$$ = malloc(sizeof(struct CodeNode));
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
 	strcpy($$->name, ">");
 }
 ;
@@ -290,11 +337,11 @@ boolop: EQUAL {
 
 //note: we store the additon/subtraction operator in the name field of the CodeNode
 addop : PLUS{
-	$$ = malloc(sizeof(struct CodeNode));
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
 	strcpy($$->name, "+");
 }
 | MINUS{
-	$$ = malloc(sizeof(struct CodeNode));
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
 	strcpy($$->name, "-");
 }
 ;
@@ -303,7 +350,7 @@ term: term mulop factor{
 	if(strcmp($1->type, $3->type) != 0){
 		yyerror("Type mismatch");
 	}
-	$$ = malloc(sizeof(struct CodeNode));
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
 	strcpy($$->type, $1->type);
 	strcpy($$->name, newTemp());
 	strcpy($$->code, $1->code);
@@ -320,7 +367,7 @@ term: term mulop factor{
 	strcat($$->code, "\n");
 }
 | factor{
-	$$ = malloc(sizeof(struct CodeNode));
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
 	strcpy($$->type, $1->type);
 	strcpy($$->name, $1->name);
 	strcpy($$->code, $1->code);
@@ -328,32 +375,91 @@ term: term mulop factor{
 ;
 
 mulop: MULT{
-	$$ = malloc(sizeof(struct CodeNode));
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
 	strcpy($$->name, "*");
 }
 | DIV{
-	$$ = malloc(sizeof(struct CodeNode));
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
 	strcpy($$->name, "/");
 }
 ;
 
-factor: L_PAREN math_expr R_PAREN
-| NUMBER
-| ID
+factor: L_PAREN math_expr R_PAREN{
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
+	strcpy($$->type, $2->type);
+	strcpy($$->name, $2->name);
+	strcpy($$->code, $2->code);
+}
+| NUMBER{
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
+	strcpy($$->type, "int");
+	strcpy($$->name, $1);
+}
+| ID{
+	struct Bucket* var = findSymbol($1, symbolTable);
+	if(var == NULL){
+		yyerror("Undeclared variable");
+	}
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
+	strcpy($$->type, var->type);
+	strcpy($$->name, var->value);
+}
 ;
 
-array: L_BRACE data data_ R_BRACE;
+array: L_BRACE data data_ R_BRACE{ //All the data is stored in the code field of the CodeNode, separated by a space
+	if(strcmp($2->type, "int") == 0){ //only int arrays are allowed
+		yyerror("Type mismatch. Arrays must be of type int");
+	}
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
+	strcpy($$->type, $2->type);
+	strcpy($$->code, $2->code);
+	if($3 != NULL){
+		strcat($$->code, " ");
+		strcat($$->code, $3->code);
+	}
+};
 
-data : NUMBER
-| STRING_LITERAL
+data : NUMBER{
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
+	strcpy($$->type, "int");
+	strcpy($$->code, $1);
+}
+| ID{
+	struct Bucket* var = findSymbol($1, symbolTable);
+	if(var == NULL){
+		yyerror("Undeclared variable");
+	}
+	if(strcmp(var->type, "int") != 0){
+		yyerror("Type mismatch. Arrays must be of type int");
+	}
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
+	strcpy($$->type, var->type);
+	strcpy($$->code, var->tempVar);
+}
 ;
 
 
-data_: 
-| COMMA data data_
+data_: {
+	$$ = NULL;
+}
+| COMMA data data_{
+	if(strcmp($2->type, "int") == 0){ //only int arrays are allowed
+		yyerror("Type mismatch. Arrays must be of type int");
+	}
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
+	strcpy($$->type, $2->type);
+	strcpy($$->code, $2->code);
+	strcat($$->code, " ");
+	strcat($$->code, $3->code);
+}
 ;
 
-if_stmt : IF L_PAREN bool_expr R_PAREN L_BRACE EOL program EOL R_BRACE else_if_stmt else_stmt;
+if_stmt : IF L_PAREN bool_expr R_PAREN L_BRACE EOL program EOL R_BRACE else_if_stmt else_stmt{
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode))
+	strcpy($$->code, $3->code);
+	strcat($$->code, "\n");
+
+};
 
 else_stmt :
 | ELSE L_BRACE EOL program EOL R_BRACE
