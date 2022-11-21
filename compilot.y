@@ -130,7 +130,7 @@ FILE* fp;
 %token FALSE
 %token COMMENT
 
-%type <node> datatype bool_expr math_expr boolop term addop mulop
+%type <node> datatype bool_expr math_expr boolop term addop mulop data
 %type <str> TRUE FALSE ID
 
 %%
@@ -344,8 +344,14 @@ factor: L_PAREN math_expr R_PAREN
 
 array: L_BRACE data data_ R_BRACE;
 
-data : NUMBER
-| STRING_LITERAL
+data : NUMBER {
+	$$ = malloc(sizeof(struct CodeNode));
+	strcpy($$->name, "digit");
+}
+| STRING_LITERAL {
+	$$ = malloc(sizeof(struct CodeNode));
+	strcpy($$->name, "str_lit");
+}
 ;
 
 
