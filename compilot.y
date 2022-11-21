@@ -165,8 +165,22 @@ assignment: expression {
 }
 ;
 
-declaration_stmt: datatype ID declaration
-| datatype L_BRACK R_BRACK ID declaration;
+declaration_stmt: datatype ID declaration {
+	$$ = malloc(sizeof(struct CodeNode));
+	strcpy($$->name, newTemp());
+	$$->type = $1->type;
+	struct Bucket* funct = addSymbol($2, symbolTable);
+	$$->code = $3->code;
+	/*if (type mismatch code)*/
+}
+| datatype L_BRACK R_BRACK ID declaration; {
+	$$ = malloc(sizeof(struct CodeNode));
+	strcpy($$->name, newTemp());
+	$$->type = $1->type;
+	struct Bucket* funct = addSymbol($2, symbolTable);
+	$$->code = $3->code;
+	/*if (type mismatch code)*/
+}
 
 declaration: 
 | ASSIGN expression
