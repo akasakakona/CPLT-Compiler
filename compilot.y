@@ -130,8 +130,8 @@ FILE* fp;
 %token FALSE
 %token COMMENT
 
-%type <node> datatype bool_expr math_expr boolop term addop mulop data
-%type <str> TRUE FALSE ID
+%type <node> datatype bool_expr math_expr boolop term addop mulop data expression assignment
+%type <str> TRUE FALSE ID STRING_LITERAL
 
 %%
 program: stmt
@@ -153,8 +153,16 @@ stmt:
 
 assignment_stmt: ID ASSIGN assignment;
 
-assignment: expression
-| array
+assignment: expression {
+	$$ = malloc(sizeof(struct CodeNode));
+	strcpy($$->name, newTemp());
+	$$->code = $1->code;
+}
+| array {
+	$$ = malloc(sizeof(struct CodeNode));
+	strcpy($$->name, newTemp());
+	$$->code = $1->code;
+}
 ;
 
 declaration_stmt: datatype ID declaration
@@ -414,5 +422,3 @@ int main(int argc, char **argv)
 	yyparse();
 	fclose(fp);
 	return 0;
-
-}
