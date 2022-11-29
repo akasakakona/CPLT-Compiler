@@ -115,6 +115,14 @@ char* newTemp(){
 	return temp;
 }
 
+char* newLabel(){
+	static int j = 0;
+	char* temp = (char*)malloc(8);
+	sprintf(temp, "L%d", j);
+	i++;
+	return temp;
+}
+
 struct Bucket* symbolTable[50];
 
 FILE* fp;
@@ -182,20 +190,78 @@ assignment: expression
 | array
 ;
 
-declaration_stmt: datatype ID declaration
-| datatype L_BRACK R_BRACK ID declaration{
-	if(findSymbol($4, symbolTable) != NULL){
+declaration_stmt: datatype ID declaration{
+
+}
+| datatype ID L_BRACK R_BRACK declaration{
+	if(findSymbol($2, symbolTable) != NULL){
 		yyerror("redeclaration of variable");
 	}
+	$$ = (CodeNode*)malloc(sizeof(CodeNode));
 	char tempType[16];
 	strcpy(tempType, $1->type);
-	strcat(temp, "[]");
-	if($5->type[0] == '\0'){ //if the type field of declaration node is empty, then it is a declaration without assignment
-		//In that case, we do not need to generate a new temporary variable, therefore we use NULL as the third parameter
-		addSymbol($4, tempType, NULL, symbolTable);
+	strcat(temp, "[]"); //If it is an array, append [] to the type to indicate that it is an array
+	if($5->type[0] == '\0'){ 
+		yyerror("array size not specified"); //codes like: "itg a[]" is not allowed
 	}else{
-		addSymbol($4, tempType, newTemp(), symbolTable);
-		
+		//if the type field of declaration node is not empty, then it is a declaration with assignment
+		//In that case, we need to generate a new temporary variable, therefore we use newTemp() as the third parameter
+		//and we also need to generate code for the assignment
+		strcpy($$->name, newTemp());
+		addSymbol($2, tempType, $$->name, symbolTable);
+		char tempCode[1024];
+		int count = 0;
+		char* token = strtok($5->code, " ");
+		while(token != NULL){
+			sprintf(tempCode + strlen(tempCode), "[]= %s, %d, %s\n", $4, count, token);
+			count++;
+		}
+		tempCode[strlen(tempCode) - 1] = '\0';
+		memset($5->code, 0, sizeof($5->code));
+		sprintf($5->code, ".[] %s, %d", $4, count); //declare the array
+		if(strlen($5->code) + strlen(tempCode) < 1023){ 
+			//check if the code generated is too long
+			strcat($5->code, tempCode);
+		}else{
+			yyerror("Code too long! Buffer overflow!");
+		}
+	}
+}
+| datatype ID L_BRACK expression R_BRACK declaration{
+	if(findSymbol($2, symbolTable) != NULL){
+		yyerror("redeclaration of variable");
+	}
+	if(strcmp($4->type, "int") != 0){
+		yyerror("array size must be an integer");
+	}
+	$$ = (CodeNode*)malloc(sizeof(CodeNode));
+	char tempType[16];
+	strcpy(tempType, $1->type);
+	strcat(temp, "[]"); //If it is an array, append [] to the type to indicate that it is an array
+	if($6->type[0] == '\0'){ 
+		yyerror("array size not specified"); //codes like: "itg a[]" is not allowed
+	}else{
+		//if the type field of declaration node is not empty, then it is a declaration with assignment
+		//In that case, we need to generate a new temporary variable, therefore we use newTemp() as the third parameter
+		//and we also need to generate code for the assignment
+		strcpy($$->name, newTemp());
+		addSymbol($2, tempType, $$->name, symbolTable);
+		char tempCode[1024];
+		int count = 0;
+		char* token = strtok($5->code, " ");
+		while(token != NULL){
+			sprintf(tempCode + strlen(tempCode), "[]= %s, %d, %s\n", $4, count, token);
+			count++;
+		}
+		tempCode[strlen(tempCode) - 1] = '\0';
+		memset($5->code, 0, sizeof($5->code));
+		sprintf($5->code, ".[] %s, %d", $4, count); //declare the array
+		if(strlen($5->code) + strlen(tempCode) < 1023){ 
+			//check if the code generated is too long
+			strcat($5->code, tempCode);
+		}else{
+			yyerror("Code too long! Buffer overflow!");
+		}
 	}
 };
 
@@ -230,7 +296,7 @@ expression: math_expr
 | ID L_PAREN parameter R_PAREN //funct_call
 | TRUE
 | FALSE
-| ID L_BRACK math_expr R_BRACK //array access
+| ID L_BRACK expression R_BRACK //array access
 | array
 ;
 
@@ -411,7 +477,7 @@ array: L_BRACE data data_ R_BRACE{ //All the data is stored in the code field of
 		yyerror("Type mismatch. Arrays must be of type int");
 	}
 	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->type, $2->type);
+	strcpy($$->type, "array");
 	strcpy($$->code, $2->code);
 	if($3 != NULL){
 		strcat($$->code, " ");
@@ -461,10 +527,14 @@ if_stmt : IF L_PAREN bool_expr R_PAREN L_BRACE EOL program EOL R_BRACE else_if_s
 
 };
 
-else_stmt :
+else_stmt :{
+	$$ = NULL;
+}
 | ELSE L_BRACE EOL program EOL R_BRACE
 
-else_if_stmt: 
+else_if_stmt: {
+	$$ = NULL;
+}
 | ELSE_IF L_PAREN bool_expr R_PAREN L_BRACE EOL program EOL R_BRACE else_if_stmt
 ;
 
