@@ -137,10 +137,8 @@ FILE* fp;
 %token NUMBER
 %token PLUS MINUS MULT DIV
 %token ASSIGN
-%token STRING
 %token EOL
 %token END
-%token STRING_LITERAL
 %token INTEGER
 %token BOOLEAN
 %token COMMA
@@ -285,14 +283,9 @@ datatype: INTEGER{
 	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
 	strcpy($$->type, "bool");
 }
-| STRING{
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->type, "str");
-}
 ;
 
 expression: math_expr
-| STRING_LITERAL
 | ID L_PAREN parameter R_PAREN //funct_call
 | TRUE
 | FALSE
@@ -551,12 +544,11 @@ arguments_ :
 
 parameter : 
 | NUMBER parameter_ 
-| STRING_LITERAL parameter_ | ID parameter_ | array parameter_
+| ID parameter_ | array parameter_
 ;
 
 parameter_ : 
 | COMMA NUMBER parameter_ 
-| COMMA STRING_LITERAL parameter_ 
 | COMMA ID parameter_ 
 | COMMA array parameter_
 ;
