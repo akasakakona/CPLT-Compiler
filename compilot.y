@@ -165,8 +165,16 @@ FILE* fp;
 %type <str> TRUE FALSE ID
 
 %%
-program: stmt
-| program EOL stmt
+program: stmt{
+	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	strcpy($$->code, $1->code);
+}
+| program EOL stmt{
+	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	strcpy($$->code, $1->code);
+	strcat($$->code, "\n");
+	strcat($$->code, $3->code);
+}
 ;
 
 stmt: 
@@ -182,34 +190,83 @@ stmt:
  | COMMENT {printf(" comment\n");}
  ;
 
-assignment_stmt: ID ASSIGN assignment;
+assignment_stmt: ID ASSIGN assignment{
+	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	Bucket* var = findSymbol($1, symbolTable);
+	if(var == NULL){
+		yyerror("Variable not declared");
+	}
+	if(strcmp(var->type, $3->type) != 0){
+		yyerror("Type mismatch");
+	}
+	strcpy($$->code, $3->code);
+	strcat($$->code, "\n= ");
+	strcat($$->code, var->temVar);
+	strcat($$->code, ", ");
+	strcat($$->code, $3->name);
+}
+| ID L_BRACK expression R_BRACK ASSIGN assignment{
+	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	Bucket* var = findSymbol($1, symbolTable);
+	if(var == NULL){
+		yyerror("Variable not declared");
+	}
+	if(strcmp("int", $6->type) != 0){
+		yyerror("Type mismatch, array can only store int");
+	}
+	if(strcmp("int", $3->type) != 0){
+		yyerror("Type mismatch, array index must be int");
+	}
+	strcpy($$->code, $3->code);
+	strcat($$->code, "\n");
+	strcat($$->code, $6->code);
+	//[]= dst, index, src
+	strcat($$->code, "\n[]= ");
+	strcat($$->code, var->temVar);
+	strcat($$->code, ", ");
+	strcat($$->code, $3->name);
+	strcat($$->code, ", ");
+	strcat($$->code, $6->name);
+}
 
-assignment: expression
-| array
+assignment: expression{
+	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	strcpy($$->code, $1->code);
+	strcpy($$->name, $1->name);
+	strcpy($$->type, $1->type);
+}
+| array{
+	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	strcpy($$->code, $1->code);
+	strcpy($$->name, $1->name);
+	strcpy($$->type, $1->type);
+}
 ;
 
 declaration_stmt: datatype ID declaration{
-
+	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	strcpy($$->code, $3->code);
+	if($3 != NULL){
+		addSymbol($2, $1->type, , symbolTable);
+	}
 }
-| datatype ID L_BRACK R_BRACK declaration{
+| INTEGER ID L_BRACK R_BRACK declaration{
 	if(findSymbol($2, symbolTable) != NULL){
 		yyerror("redeclaration of variable");
 	}
 	$$ = (CodeNode*)malloc(sizeof(CodeNode));
-	char tempType[16];
-	strcpy(tempType, $1->type);
-	strcat(temp, "[]"); //If it is an array, append [] to the type to indicate that it is an array
-	if($5->type[0] == '\0'){ 
+	if($5 == NULL){ 
 		yyerror("array size not specified"); //codes like: "itg a[]" is not allowed
 	}else{
 		//if the type field of declaration node is not empty, then it is a declaration with assignment
 		//In that case, we need to generate a new temporary variable, therefore we use newTemp() as the third parameter
 		//and we also need to generate code for the assignment
 		strcpy($$->name, newTemp());
-		addSymbol($2, tempType, $$->name, symbolTable);
+		addSymbol($2, "array", $$->name, symbolTable);
 		char tempCode[1024];
 		int count = 0;
 		char* token = strtok($5->code, " ");
+		//generate the code that assigns the value to the array
 		while(token != NULL){
 			sprintf(tempCode + strlen(tempCode), "[]= %s, %d, %s\n", $4, count, token);
 			count++;
@@ -225,7 +282,7 @@ declaration_stmt: datatype ID declaration{
 		}
 	}
 }
-| datatype ID L_BRACK expression R_BRACK declaration{
+| INTEGER ID L_BRACK expression R_BRACK declaration{
 	if(findSymbol($2, symbolTable) != NULL){
 		yyerror("redeclaration of variable");
 	}
@@ -233,11 +290,13 @@ declaration_stmt: datatype ID declaration{
 		yyerror("array size must be an integer");
 	}
 	$$ = (CodeNode*)malloc(sizeof(CodeNode));
-	char tempType[16];
-	strcpy(tempType, $1->type);
-	strcat(temp, "[]"); //If it is an array, append [] to the type to indicate that it is an array
-	if($6->type[0] == '\0'){ 
-		yyerror("array size not specified"); //codes like: "itg a[]" is not allowed
+	strcpy($$->code, $4->code);
+	strcat($$->code, "\n");
+	if($6 == NULL){ 
+		//In this case, things like "itg a[3]" is allowed, since we know the size of the array
+		strcpy($$->name, newTemp());
+		addSymbol($2, "array", $$->name, symbolTable);
+		sprintf($$->code, ".[] %s, %s", $$->name, $4->name);
 	}else{
 		//if the type field of declaration node is not empty, then it is a declaration with assignment
 		//In that case, we need to generate a new temporary variable, therefore we use newTemp() as the third parameter
