@@ -67,10 +67,11 @@ void delSymbole(char* a, struct Bucket* table[]){
 	}
 }
 
-//NOTE: FIX SYMBOL TABLE, NO MORE GLOBAL VARIABLE AND LOCAL VARIABLE
-//GLOBAL VARIABLE AND LOCAL VARIABLE SHOULD NOT HAVE THE SAME NAME
-//Or else, even though we may be able to distinguish them, it will enable
-//the user to declare multiple local variables with the same name
+/*****
+FIXME: We probably do not need to store a temporary variable for each symbol,
+but what we need to store is the scope of the symbol.
+I'll think about how to implement this later.
+*****/
 
 void addSymbol(char* name, char* type, char* tempVar, struct Bucket* table[]){
 	int i = hash(name);
@@ -172,8 +173,10 @@ program: stmt{
 | program EOL stmt{
 	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
 	strcpy($$->code, $1->code);
-	strcat($$->code, "\n");
-	strcat($$->code, $3->code);
+	if($3 != NULL){
+		strcat($$->code, "\n");
+		strcat($$->code, $3->code);
+	}
 }
 ;
 
@@ -323,8 +326,7 @@ declaration_stmt: datatype ID declaration{
 };
 
 declaration: {
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->type, "");
+	$$ = NULL
 }
 | ASSIGN expression{
 	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
@@ -344,12 +346,67 @@ datatype: INTEGER{
 }
 ;
 
-expression: math_expr
-| ID L_PAREN parameter R_PAREN //funct_call
-| TRUE
-| FALSE
-| ID L_BRACK expression R_BRACK //array access
-| array
+expression: math_expr{
+	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	strcpy($$->code, $1->code);
+	strcpy($$->name, $1->name);
+	strcpy($$->type, $1->type);
+}
+| ID L_PAREN parameter R_PAREN {
+	struct Bucket* funct = findSymbol($1, symbolTable);
+	if(funct == NULL){
+		yyerror("Undeclared function");
+	}
+	if(strcmp(funct->type, "function") != 0){
+		yyerror("Not a function");
+	}
+	/*******
+	FIXME: This is where I'm currently working on
+	I need to generate code for the function call
+	we need to check if the number of parameters is correct
+	and we need to check if the type of the parameters is correct
+	also the return type of the function
+	and we need to generate code for the function call
+	This bit is a little tricky
+	I have been thinking, maybe function table will solve our problem
+	But in that case, it means that we will be able to have functions and variables with the same name.
+	*******/
+	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	strcpy($$->name, newTemp());
+	char* token = strtok($3->code, " ");
+} //function call
+| TRUE{
+	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	strcpy($$->name, "1");
+	strcpy($$->type, "bool");
+}
+| FALSE{
+	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	strcpy($$->name, "0");
+	strcpy($$->type, "bool");
+}
+| ID L_BRACK expression R_BRACK{
+	struct Bucket* array = findSymbol($1, symbolTable);
+	if(array == NULL){
+		yyerror("Undeclared array");
+	}
+	if(strcmp(array->type, "array") != 0){
+		yyerror("Not an array");
+	}
+	if(strcmp($3->type, "int") != 0){
+		yyerror("Array index must be an integer");
+	}
+	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	strcpy($$->name, newTemp());
+	sprintf($$->code, "=[] %s, %s, %s", $$->name, $1 , $3->name);
+	strcpy($$->type, array->type);
+} //array access
+| array {
+	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	strcpy($$->name, $1->name);
+	strcpy($$->code, $1->code);
+	strcpy($$->type, $1->type);
+}
 ;
 
 math_expr: term addop math_expr
@@ -402,7 +459,7 @@ bool_expr: math_expr boolop math_expr{
 	if(funct == NULL){
 		yyerror("Undeclared function");
 	}
-	if(strcmp(funct->type, "bool") != 0){
+	if(strcmp(funct->type, "function") != 0){
 		yyerror("Type mismatch");
 	}
 	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
@@ -453,7 +510,7 @@ boolop: EQUAL {
 ;
 
 
-//note: we store the additon/subtraction operator in the name field of the CodeNode
+//We store the additon/subtraction operator in the name field of the CodeNode
 addop : PLUS{
 	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
 	strcpy($$->name, "+");
@@ -567,16 +624,21 @@ data_: {
 	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
 	strcpy($$->type, $2->type);
 	strcpy($$->code, $2->code);
-	strcat($$->code, " ");
-	strcat($$->code, $3->code);
+	if($3 != NULL){
+		strcat($$->code, " ");
+		strcat($$->code, $3->code);
+	}
 }
 ;
 
 if_stmt : IF L_PAREN bool_expr R_PAREN L_BRACE EOL program EOL R_BRACE else_if_stmt else_stmt{
+	/****
+	FIXME: This part is not done yet. We need to add the code for the else if and else statements
+	Which is essentially adding labels for stuff
+	****/
 	$$ = (*CodeNode)malloc(sizeof(struct CodeNode))
 	strcpy($$->code, $3->code);
 	strcat($$->code, "\n");
-
 };
 
 else_stmt :{
