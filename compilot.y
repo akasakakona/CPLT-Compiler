@@ -68,9 +68,14 @@ void delSymbole(char* a, struct Bucket* table[]){
 }
 
 /*****
-FIXME: We probably do not need to store a temporary variable for each symbol,
-but what we need to store is the scope of the symbol.
+FIXME: 
+We want to create a newTemp for each variable, because if we don't
+we could have a variable called "t1" that is created by newTemp(), and we can have another
+variable called "t1" that is created by user.
+We also need to store is the scope of the symbol.
 I'll think about how to implement this later.
+NOTE: Maybe we shouldn't even let the users declare variables
+w/o assignment at all! This only further complicates the code
 *****/
 
 void addSymbol(char* name, char* type, char* tempVar, struct Bucket* table[]){
@@ -90,7 +95,7 @@ void addSymbol(char* name, char* type, char* tempVar, struct Bucket* table[]){
 	if(tempVar != NULL){
 		strcpy(new->temVar, tempVar);
 	}else{
-		strcpy(new->temVar, "");
+		yyerror("Declaration without assignment is not allowed");
 	}
 	new->next = table[i];
 	table[i] = new;
@@ -250,7 +255,9 @@ declaration_stmt: datatype ID declaration{
 	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
 	strcpy($$->code, $3->code);
 	if($3 != NULL){
-		addSymbol($2, $1->type, , symbolTable);
+		addSymbol($2, $1->type, newTemp(), symbolTable);
+	}else{
+		yyerror("Declaration without assignment is not allowed");
 	}
 }
 | INTEGER ID L_BRACK R_BRACK declaration{
@@ -609,6 +616,9 @@ data : NUMBER{
 	}
 	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
 	strcpy($$->type, var->type);
+	if(strcmp(var->value, "") == 0){
+		yyerror("Array element not initialized");
+	}
 	strcpy($$->code, var->tempVar);
 }
 ;
