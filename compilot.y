@@ -17,6 +17,20 @@ struct Bucket {
 	struct Bucket* next;
 };
 
+void changeLabel(char *text, char *newLabel) {
+    char buffer[1025];
+    char *p = text;
+
+    while ((p = strstr(p, "TEMPLABEL"))) {
+        strncpy(buffer, text, p-text);
+        buffer[p-text] = '\0'; //reterminate string
+        strcat(buffer, "NEWLABEL");
+        strcat(buffer, p+sizeof("TEMPLABEL")-1);
+        strcpy(text, buffer);
+        p++;
+    }
+}
+
 /****
 itg a = 10
 itg b = 20
@@ -127,6 +141,10 @@ char* newLabel(){
 	sprintf(temp, "L%d", j);
 	i++;
 	return temp;
+}
+
+void changeLabel(char* label, char* newLabel){
+	
 }
 
 struct Bucket* symbolTable[50];
@@ -377,6 +395,8 @@ expression: math_expr{
 	This bit is a little tricky
 	I have been thinking, maybe function table will solve our problem
 	But in that case, it means that we will be able to have functions and variables with the same name.
+	NOTE: According to the professor, we do not need to check the validity of the function call
+	So a function table is optional
 	*******/
 	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
 	strcpy($$->name, newTemp());
@@ -649,17 +669,80 @@ if_stmt : IF L_PAREN bool_expr R_PAREN L_BRACE EOL program EOL R_BRACE else_if_s
 	$$ = (*CodeNode)malloc(sizeof(struct CodeNode))
 	strcpy($$->code, $3->code);
 	strcat($$->code, "\n");
+	strcat($$->code, "! ");
+	strcat($$->code, $3->name);
+	strcat($$->code, ", ");
+	strcat($$->code, $3->name);
+	strcat($$->code, "\n");
+	//We want to jump to the else if statement if the bool_expr is false, so we need to invert the result of bool_expr
+	char* tempLabel = newLabel();
+	strcat($$->code, "?:=");
+	strcat($$->code, tempLabel);
+	strcat($$->code, ", ");
+	strcat($$->code, $3->name);
+	strcat($$->code, "\n");
+	strcat($$->code, $7->code);
+	strcat($$->code, "\n");
+	strcat($$->code, ":");
+	strcat($$->code, tempLabel);
+	tempLabel = newLabel();
+	if($10 != NULL){
+		strcat($$->code, "\n");
+		changeLabel($10->code, tempLabel);
+		strcat($$->code, $9->code);
+	}
+	if($11 != NULL){
+		strcat($$->code, "\n");
+		changeLabel($11->code, tempLabel);
+		strcat($$->code, $10->code);
+	}
+	strcat($$->code, "\n:");
+	strcat($$->code, tempLabel);
 };
 
 else_stmt :{
 	$$ = NULL;
 }
-| ELSE L_BRACE EOL program EOL R_BRACE
+| ELSE L_BRACE EOL program EOL R_BRACE{
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
+	strcpu($$->name, newLabel());
+	strcpy($$->code, ":=");
+	strcat($$->code, $$->name);
+	strcat($$->code, "\n");
+	strcat($$->code, $4->code);
+}
 
 else_if_stmt: {
 	$$ = NULL;
 }
-| ELSE_IF L_PAREN bool_expr R_PAREN L_BRACE EOL program EOL R_BRACE else_if_stmt
+| ELSE_IF L_PAREN bool_expr R_PAREN L_BRACE EOL program EOL R_BRACE else_if_stmt{
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
+	strcpy($$->name, newLabel());
+	strcpy($$->code, ":=");
+	strcat($$->code, $$->name);
+	strcat($$->code, "\n");
+	strcat($$->code, $3->code);
+	strcat($$->code, "\n");
+	strcat($$->code, "! ");
+	strcat($$->code, $3->name);
+	strcat($$->code, ", ");
+	strcat($$->code, $3->name);
+	strcat($$->code, "\n");
+	//We want to jump to the else if statement if the bool_expr is false, so we need to invert the result of bool_expr
+	char* tempLabel = newLabel();
+	strcat($$->code, "?:=");
+	strcat($$->code, tempLabel);
+	strcat($$->code, ", ");
+	strcat($$->code, $3->name);
+	strcat($$->code, "\n");
+	strcat($$->code, $7->code);
+	strcat($$->code, "\n");
+	strcat($$->code, ":=TEMPLABEL");
+	if($10 != NULL){
+		strcat($$->code, "\n");
+		strcat($$->code, $9->code);
+	}
+}
 ;
 
 while_stmt : WHILE L_PAREN bool_expr R_PAREN L_BRACE EOL program EOL R_BRACE
