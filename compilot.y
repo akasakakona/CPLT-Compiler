@@ -666,6 +666,8 @@ if_stmt : IF L_PAREN bool_expr R_PAREN L_BRACE EOL program EOL R_BRACE else_if_s
 	FIXME: This part is not done yet. We need to add the code for the else if and else statements
 	Which is essentially adding labels for stuff
 	****/
+	char* tempLabel1 = newLabel();
+	char* tempLabel2 = newLabel();
 	$$ = (*CodeNode)malloc(sizeof(struct CodeNode))
 	strcpy($$->code, $3->code);
 	strcat($$->code, "\n");
@@ -674,30 +676,36 @@ if_stmt : IF L_PAREN bool_expr R_PAREN L_BRACE EOL program EOL R_BRACE else_if_s
 	strcat($$->code, ", ");
 	strcat($$->code, $3->name);
 	strcat($$->code, "\n");
-	//We want to jump to the else if statement if the bool_expr is false, so we need to invert the result of bool_expr
-	char* tempLabel = newLabel();
+	//We want to jump to the else if statement if the bool_expr is false
+	//so we need to invert the result of bool_expr
 	strcat($$->code, "?:=");
-	strcat($$->code, tempLabel);
+	strcat($$->code, tempLabel1);
 	strcat($$->code, ", ");
 	strcat($$->code, $3->name);
 	strcat($$->code, "\n");
-	strcat($$->code, $7->code);
+	strcat($$->code, $7->code);//finish running program
 	strcat($$->code, "\n");
+	strcat($$->code, ":=");
+	strcat($$->code, tempLabel2);
+	strcat($$->code, "\n");//go to the end of the if statement
 	strcat($$->code, ":");
-	strcat($$->code, tempLabel);
+	strcat($$->code, tempLabel1);//generate a new label to go to if the bool_expr is false
 	tempLabel = newLabel();
 	if($10 != NULL){
 		strcat($$->code, "\n");
-		changeLabel($10->code, tempLabel);
+		changeLabel($10->code, tempLabel2); //change TEMPLABEL to go to the end of if statement
 		strcat($$->code, $9->code);
 	}
 	if($11 != NULL){
 		strcat($$->code, "\n");
-		changeLabel($11->code, tempLabel);
+		//since this is else statement
+		//it automatically goes to the end of the if statement
+		//once it is done executing
+		//therefore, no need to change the label
 		strcat($$->code, $10->code);
 	}
 	strcat($$->code, "\n:");
-	strcat($$->code, tempLabel);
+	strcat($$->code, tempLabel2);//set the end of the if statement
 };
 
 else_stmt :{
@@ -705,10 +713,6 @@ else_stmt :{
 }
 | ELSE L_BRACE EOL program EOL R_BRACE{
 	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpu($$->name, newLabel());
-	strcpy($$->code, ":=");
-	strcat($$->code, $$->name);
-	strcat($$->code, "\n");
 	strcat($$->code, $4->code);
 }
 
@@ -717,10 +721,7 @@ else_if_stmt: {
 }
 | ELSE_IF L_PAREN bool_expr R_PAREN L_BRACE EOL program EOL R_BRACE else_if_stmt{
 	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->name, newLabel());
-	strcpy($$->code, ":=");
-	strcat($$->code, $$->name);
-	strcat($$->code, "\n");
+	char* tempLabel1 = newLabel();
 	strcat($$->code, $3->code);
 	strcat($$->code, "\n");
 	strcat($$->code, "! ");
@@ -729,15 +730,15 @@ else_if_stmt: {
 	strcat($$->code, $3->name);
 	strcat($$->code, "\n");
 	//We want to jump to the else if statement if the bool_expr is false, so we need to invert the result of bool_expr
-	char* tempLabel = newLabel();
 	strcat($$->code, "?:=");
-	strcat($$->code, tempLabel);
+	strcat($$->code, tempLabel1);
 	strcat($$->code, ", ");
 	strcat($$->code, $3->name);
 	strcat($$->code, "\n");
 	strcat($$->code, $7->code);
 	strcat($$->code, "\n");
-	strcat($$->code, ":=TEMPLABEL");
+	strcat($$->code, ":=TEMPLABEL\n:");
+	strcat($$->code, tempLabel1);
 	if($10 != NULL){
 		strcat($$->code, "\n");
 		strcat($$->code, $9->code);
