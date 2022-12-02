@@ -204,7 +204,11 @@ program: stmt{
 ;
 
 stmt: 
- | BREAK {printf("break");}
+ | BREAK {
+	printf("break");
+	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	strcpy($$->code, ":=TEMPLABEL");
+	}
  | declaration_stmt {printf(" declaration_stmt\n");}
  | ID L_PAREN parameter R_PAREN {printf(" function_call\n");}
  | if_stmt {printf(" if_stmt\n");}
@@ -694,7 +698,7 @@ if_stmt : IF L_PAREN bool_expr R_PAREN L_BRACE EOL program EOL R_BRACE else_if_s
 	if($10 != NULL){
 		strcat($$->code, "\n");
 		changeLabel($10->code, tempLabel2); //change TEMPLABEL to go to the end of if statement
-		strcat($$->code, $9->code);
+		strcat($$->code, $10->code);
 	}
 	if($11 != NULL){
 		strcat($$->code, "\n");
@@ -702,7 +706,7 @@ if_stmt : IF L_PAREN bool_expr R_PAREN L_BRACE EOL program EOL R_BRACE else_if_s
 		//it automatically goes to the end of the if statement
 		//once it is done executing
 		//therefore, no need to change the label
-		strcat($$->code, $10->code);
+		strcat($$->code, $11->code);
 	}
 	strcat($$->code, "\n:");
 	strcat($$->code, tempLabel2);//set the end of the if statement
@@ -746,11 +750,41 @@ else_if_stmt: {
 }
 ;
 
-while_stmt : WHILE L_PAREN bool_expr R_PAREN L_BRACE EOL program EOL R_BRACE
+while_stmt : WHILE L_PAREN bool_expr R_PAREN L_BRACE EOL program EOL R_BRACE{
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
+	char* tempLabel1 = newLabel();
+	char* tempLabel2 = newLabel();
+	strcpy($$->code, ":");
+	strcat($$->code, tempLabel1);
+	strcat($$->code, "\n");
+	strcat($$->code, $3->code);
+	strcat($$->code, "\n");
+	strcat($$->code, "! ");
+	strcat($$->code, $3->name);
+	strcat($$->code, ", ");
+	strcat($$->code, $3->name);
+	strcat($$->code, "\n");
+	//We want to jump to the end of the while statement if the bool_expr is false, so we need to invert the result of bool_expr
+	strcat($$->code, "?:=");
+	strcat($$->code, tempLabel2);
+	strcat($$->code, ", ");
+	strcat($$->code, $3->name);
+	strcat($$->code, "\n");
+	//in case there is a break statement, we want to change the labels first
+	changeLabel($7->code, tempLabel2);
+	strcat($$->code, $7->code);
+	strcat($$->code, "\n");
+	strcat($$->code, ":=");
+	strcat($$->code, tempLabel1);
+	strcat($$->code, "\n");
+	strcat($$->code, ":");
+	strcat($$->code, tempLabel2);
+}
 ;
 
 
-arguments: datatype ID arguments_
+arguments: datatype ID arguments_{
+
 ;
 
 arguments_ :  
