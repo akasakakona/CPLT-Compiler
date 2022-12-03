@@ -88,6 +88,7 @@ we could have a variable called "t1" that is created by newTemp(), and we can ha
 variable called "t1" that is created by user.
 We also need to store is the scope of the symbol.
 I'll think about how to implement this later.
+We chould do a chained symbol table
 NOTE: Maybe we shouldn't even let the users declare variables
 w/o assignment at all! This only further complicates the code
 *****/
@@ -191,6 +192,7 @@ FILE* fp;
 %%
 result: program{
 	fputs($1->code, fp);
+	printf("%s\n", $1->code);
 }
 
 program: stmt{
@@ -394,21 +396,17 @@ expression: math_expr{
 		yyerror("Not a function");
 	}
 	/*******
-	FIXME: This is where I'm currently working on
-	I need to generate code for the function call
-	we need to check if the number of parameters is correct
-	and we need to check if the type of the parameters is correct
-	also the return type of the function
-	and we need to generate code for the function call
-	This bit is a little tricky
-	I have been thinking, maybe function table will solve our problem
-	But in that case, it means that we will be able to have functions and variables with the same name.
 	NOTE: According to the professor, we do not need to check the validity of the function call
 	So a function table is optional
 	*******/
 	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
 	strcpy($$->name, newTemp());
-	char* token = strtok($3->code, " ");
+	strcpy($$->code, $3->code);
+	strcat($$->code, "\n");
+	strcat($$->code, "call ");
+	strcat($$->code, $1);
+	strcat($$->code, ", ");
+	strcat($$->code, $$->name);
 } //function call
 | TRUE{
 	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
@@ -670,10 +668,6 @@ data_: {
 ;
 
 if_stmt : IF L_PAREN bool_expr R_PAREN L_BRACE EOL program EOL R_BRACE else_if_stmt else_stmt{
-	/****
-	FIXME: This part is not done yet. We need to add the code for the else if and else statements
-	Which is essentially adding labels for stuff
-	****/
 	char* tempLabel1 = newLabel();
 	char* tempLabel2 = newLabel();
 	$$ = (*CodeNode)malloc(sizeof(struct CodeNode))
