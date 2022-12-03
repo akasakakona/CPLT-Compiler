@@ -189,6 +189,10 @@ FILE* fp;
 %type <str> TRUE FALSE ID
 
 %%
+result: program{
+	fputs($1->code, fp);
+}
+
 program: stmt{
 	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
 	strcpy($$->code, $1->code);
@@ -782,24 +786,83 @@ while_stmt : WHILE L_PAREN bool_expr R_PAREN L_BRACE EOL program EOL R_BRACE{
 }
 ;
 
-
+//fuck type checking, not doing it
 arguments: datatype ID arguments_{
-
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
+	strcpy($$->code, ".");
+	strcat($$->code, $1);
+	if($2 != NULL){
+		strcat($$->code, "\n");
+		strcat($$->code, $2->code);
+	}
+}
 ;
 
 arguments_ :  
-| COMMA datatype ID arguments_
+| COMMA datatype ID arguments_{
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
+	strcat($$->code, ".");
+	strcpy($$->code, $2);
+	if($3 != NULL){
+		strcat($$->code, "\n");
+		strcat($$->code, $3->code);
+	}
+}
 ;
 
-parameter : 
-| NUMBER parameter_ 
-| ID parameter_ | array parameter_
+parameter : {
+	$$ = NULL;
+}
+| NUMBER parameter_ {
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
+	strcpy($$->code, "param ");
+	strcat($$->code, $1);
+	if($2 != NULL){
+		strcat($$->code, "\n");
+		strcat($$->code, $2->code);
+	}
+}
+| ID parameter_ {
+	Bucket* var = findSymbol($1);
+	if(var == NULL){
+		printf("Error: Variable %s is not declared\n", $1);
+		exit(1);
+	}
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
+	strcpy($$->code, "param ");
+	strcat($$->code, var->name);
+	if($2 != NULL){
+		strcat($$->code, "\n");
+		strcat($$->code, $2->code);
+	}
+}
 ;
 
-parameter_ : 
-| COMMA NUMBER parameter_ 
-| COMMA ID parameter_ 
-| COMMA array parameter_
+parameter_ : {
+	$$ = NULL;
+}
+| COMMA NUMBER parameter_ {
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
+	strcpy($$->code, "param ");
+	strcat($$->code, $2);
+	if($3 != NULL){
+		strcat($$->code, "\n");
+		strcat($$->code, $3->code);
+	}
+}
+| COMMA ID parameter_ {
+	Bucket* var = findSymbol($2);
+	if(var == NULL){
+		yyerror("Undeclared variable");
+	}
+	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
+	strcpy($$->code, "param ");
+	strcat($$->code, var->name);
+	if($3 != NULL){
+		strcat($$->code, "\n");
+		strcat($$->code, $3->code);
+	}
+}
 ;
 
 %%
@@ -821,7 +884,7 @@ int main(int argc, char **argv)
 	for(i = 0; i < 50; i++){
 		symbolTable[i] = NULL;
 	} //initialize symbol table
-	fp = fopen("output.txt", "w");
+	fp = fopen("output.cplt", "w");
 	yyparse();
 	fclose(fp);
 	return 0;
