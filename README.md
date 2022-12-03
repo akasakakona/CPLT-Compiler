@@ -25,7 +25,7 @@ gcc -o cplt y.tab.c lex.yy.c -ll
 
 Once the compiler binary has been generated, we can generate the IR using the following command:
 
-`./compilot code.comp`
+`./compilot code.cplt`
 
 Once IR has been generated, we can run it using the included `mil_run` binary file with the following command: 
 
