@@ -144,11 +144,8 @@ char* newLabel(){
 	return temp;
 }
 
-void changeLabel(char* label, char* newLabel){
-	
-}
 
-struct Bucket* symbolTable[50];
+struct Bucket* currentTable = malloc(51 * sizeof(struct Bucket*));
 
 FILE* fp;
 
@@ -210,21 +207,113 @@ program: stmt{
 ;
 
 stmt: 
+ | declaration_stmt {
+	printf(" declaration_stmt\n");
+	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	strcpy($$->code, $1->code);
+	}
+ | ID L_PAREN parameter R_PAREN {
+	if(findSymbol($1, symbolTable) == NULL){
+		yyerror("Function not declared");
+	}
+	if(strcmp(findSymbol($1, symbolTable)->type, "function") != 0){
+		yyerror("Not a function");
+	}
+	printf(" function_call\n");
+	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	strcpy($$->code, $3->code);
+	strcat($$->code, "\n");
+	strcat($$->code, "call ");
+	strcat($$->code, $1);
+	strcat($$->code, ", ");
+	strcat($$->code, newTemp());
+	}
+ | if_stmt {
+	printf(" if_stmt\n");
+	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	strcpy($$->code, $1->code);
+	}
+ | while_stmt {
+	printf(" while_stmt\n");
+	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	strcpy($$->code, $1->code);
+	}
+ | assignment_stmt {
+	printf(" assignment_stmt\n");
+	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	strcpy($$->code, $1->code);
+	}
+ | datatype FUNCTION ID L_PAREN arguments R_PAREN L_BRACE EOL function_body EOL R_BRACE EOL {
+	printf("function\n");
+	if(findSymbol($3, symbolTable) != NULL){
+		yyerror("ID already declared");
+	}
+
+	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+
+	}
+ | COMMENT {printf(" comment\n");}
+ ;
+
+ if_body: 
+ | declaration_stmt {
+	printf(" declaration_stmt\n");
+	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	strcpy($$->code, $1->code);
+	}
+ | ID L_PAREN parameter R_PAREN {
+	if(findSymbol($1, symbolTable) == NULL){
+		yyerror("Function not declared");
+	}
+	if(strcmp(findSymbol($1, symbolTable)->type, "function") != 0){
+		yyerror("Not a function");
+	}
+	printf(" function_call\n");
+	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	strcpy($$->code, $3->code);
+	strcat($$->code, "\n");
+	strcat($$->code, "call ");
+	strcat($$->code, $1);
+	strcat($$->code, ", ");
+	strcat($$->code, newTemp());
+	}
+ | if_stmt {
+	printf(" if_stmt\n");
+	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	strcpy($$->code, $1->code);
+	}
+ | while_stmt {
+	printf(" while_stmt\n");
+	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	strcpy($$->code, $1->code);
+	}
+ | assignment_stmt {printf(" assignment_stmt\n");}
+ | COMMENT {printf(" comment\n");}
+ ;
+
+ function_body:declaration_stmt
+ | assignment_stmt
+ | if_stmt
+ | while_stmt
+ | RETURN expression {printf(" return\n");}
+ | RETURN
+ | ID L_PAREN parameter R_PAREN {printf(" function_call\n");}
+ | COMMENT
+ ;
+
+ loop_body: declaration_stmt
+ | assignment_stmt
+ | if_stmt
+ | while_stmt
+ | COMMENT
+ | ID L_PAREN parameter R_PAREN {printf(" function_call\n");}
  | BREAK {
 	printf("break");
 	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
 	strcpy($$->code, ":=TEMPLABEL");
 	}
- | declaration_stmt {printf(" declaration_stmt\n");}
- | ID L_PAREN parameter R_PAREN {printf(" function_call\n");}
- | if_stmt {printf(" if_stmt\n");}
- | while_stmt {printf(" while_stmt\n");}
- | RETURN expression {printf(" return\n");}
- | RETURN
- | assignment_stmt {printf(" assignment_stmt\n");}
- | datatype FUNCTION ID L_PAREN arguments R_PAREN L_BRACE EOL program EOL R_BRACE EOL {printf(" function\n");}
- | COMMENT {printf(" comment\n");}
  ;
+
 
 assignment_stmt: ID ASSIGN assignment{
 	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
@@ -667,7 +756,7 @@ data_: {
 }
 ;
 
-if_stmt : IF L_PAREN bool_expr R_PAREN L_BRACE EOL program EOL R_BRACE else_if_stmt else_stmt{
+if_stmt : IF L_PAREN bool_expr R_PAREN L_BRACE EOL if_body EOL R_BRACE else_if_stmt else_stmt{
 	char* tempLabel1 = newLabel();
 	char* tempLabel2 = newLabel();
 	$$ = (*CodeNode)malloc(sizeof(struct CodeNode))
@@ -713,7 +802,7 @@ if_stmt : IF L_PAREN bool_expr R_PAREN L_BRACE EOL program EOL R_BRACE else_if_s
 else_stmt :{
 	$$ = NULL;
 }
-| ELSE L_BRACE EOL program EOL R_BRACE{
+| ELSE L_BRACE EOL if_body EOL R_BRACE{
 	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
 	strcat($$->code, $4->code);
 }
@@ -721,7 +810,7 @@ else_stmt :{
 else_if_stmt: {
 	$$ = NULL;
 }
-| ELSE_IF L_PAREN bool_expr R_PAREN L_BRACE EOL program EOL R_BRACE else_if_stmt{
+| ELSE_IF L_PAREN bool_expr R_PAREN L_BRACE EOL if_body EOL R_BRACE else_if_stmt{
 	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
 	char* tempLabel1 = newLabel();
 	strcat($$->code, $3->code);
@@ -748,7 +837,7 @@ else_if_stmt: {
 }
 ;
 
-while_stmt : WHILE L_PAREN bool_expr R_PAREN L_BRACE EOL program EOL R_BRACE{
+while_stmt : WHILE L_PAREN bool_expr R_PAREN L_BRACE EOL loop_body EOL R_BRACE{
 	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
 	char* tempLabel1 = newLabel();
 	char* tempLabel2 = newLabel();
@@ -783,11 +872,11 @@ while_stmt : WHILE L_PAREN bool_expr R_PAREN L_BRACE EOL program EOL R_BRACE{
 //fuck type checking, not doing it
 arguments: datatype ID arguments_{
 	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->code, ".");
-	strcat($$->code, $1);
+	strcpy($$->code, ".c");
+	strcat($$->code, $2);
 	if($2 != NULL){
 		strcat($$->code, "\n");
-		strcat($$->code, $2->code);
+		strcat($$->code, $3->code);
 	}
 }
 ;
@@ -795,7 +884,7 @@ arguments: datatype ID arguments_{
 arguments_ :  
 | COMMA datatype ID arguments_{
 	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcat($$->code, ".");
+	strcat($$->code, ". ");
 	strcpy($$->code, $2);
 	if($3 != NULL){
 		strcat($$->code, "\n");
@@ -803,6 +892,10 @@ arguments_ :
 	}
 }
 ;
+
+/****
+FIXME: We need to make chained symbol tables
+***/
 
 parameter : {
 	$$ = NULL;
