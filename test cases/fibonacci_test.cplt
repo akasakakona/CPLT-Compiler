@@ -9,7 +9,7 @@ itg i = 2
 f[0] = 0
 f[1] = 1
  
-whl i <= n { 
+whl (i <= n) { 
     f[i] = f[i - 1] + f[i - 2]
     i = i + 1
 }
