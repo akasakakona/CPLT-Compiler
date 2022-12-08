@@ -1,14 +1,25 @@
-itg fnc mult(args) {
-
+itg fnc mult(itg a, itg b,) {
+    ret a * b
 }
 
 itg fnc main () {
     itg a
     itg b
-    a = 3 + 5
-    b = a
+    a = 1 + 2
+    b = a - 1
     itg c[] = {2, 3, 4}
     itg d
-    d = mult(a, b)
+    whl d < 50 {
+        d = mult(a, b)
+    }
+    out(d)
+    if a > b {
+        out("a is greater than b")
+    } elf a == b {
+        out("a is equal to b")
+    }els {
+        out("a is smaller than b")
+    } 
+    
     ret 0 
-}
+ }
