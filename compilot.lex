@@ -19,9 +19,9 @@ BREAK brk
 RETURN ret
 OUT out
 IN in
-AND [&]
+/*AND [&]
 OR [|]
-NOT [!]
+NOT [!]*/
 
 L_PAREN \(
 R_PAREN \)
