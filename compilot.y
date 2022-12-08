@@ -479,7 +479,10 @@ assignment_stmt: ID ASSIGN expression{
 	if(var->type != $3->type){
 		yyerror("Type mismatch");
 	}
-	$$->code = $3->code + "\n= " + var->name + ", " + $3->name;
+	if($3->code != ""){
+		$$->code = $3->code + "\n";
+	}
+	$$->code += "= " + var->name + ", " + $3->name;
 }
 | ID L_BRACK expression R_BRACK ASSIGN expression{
 	$$ = new CodeNode;
@@ -504,7 +507,7 @@ declaration_stmt: datatype ID declaration{
 	$$ = new CodeNode;
 	addSymbol(std::string($2), $1->type, currentTable);
 	if($3 != nullptr){
-		if($1->code != ""){
+		if($3->code != ""){
 			$$->code = $3->code + "\n";
 		}
 		$$->code += ". " + std::string($2) + "\n= " + std::string($2) + ", " + $3->name;
@@ -588,10 +591,7 @@ datatype: INTEGER{
 
 expression: math_expr{
 	printf("	math_expr:%s", $$->name.c_str());
-	$$ = new CodeNode;
-	$$->name = $1->name;
-	$$->type = $1->type;
-	$$->code = $1->code;
+	$$ = $1;
 }
 | ID L_PAREN parameter R_PAREN {
 	Bucket* funct = findSymbol(std::string($1), currentTable);
@@ -652,7 +652,14 @@ math_expr: term addop math_expr{
 		yyerror("type mismatch");
 	}
 	$$->name = newTemp();
-	$$->code = $1->code + "\n" + $3->code + "\n" + $2->name + " " + $$->name + ", " + $1->name + ", " + $3->name + "\n";
+	$$->code = ". " + $$->name + "\n";
+	if($1->code != ""){
+		$$->code += $1->code + "\n";
+	}
+	if($3->code != ""){
+		$$->code += $3->code + "\n";
+	}
+	$$->code += $2->name + " " + $$->name + ", " + $1->name + ", " + $3->name;
 	$$->type = "int";
 }
 | term {
@@ -712,6 +719,7 @@ bool_expr: math_expr boolop math_expr{
 	//here we are assuming that parameter will store a list of variable names containing the parameters in its code attribute
 	//separated by spaces. Therefore, we need to separate the parameters
 	$$->name = newTemp();
+	$$->code = ". " + $$->name + "\n";
 	std::istringstream iss($3->code);
 	std::string token;
 	while(iss >> token){
@@ -766,7 +774,14 @@ term: term mulop factor{
 	$$ = new CodeNode;
 	$$->type = $1->type;
 	$$->name = newTemp();
-	$$->code = $1->code + "\n" + $3->code + "\n" + $2->name + " " + $$->name + ", " + $1->name + ", " + $3->name + "\n";
+	$$->code = ". " + $$->name + "\n";
+	if($1->code != ""){
+		$$->code += $1->code + "\n";
+	}
+	if($3->code != ""){
+		$$->code += $3->code + "\n";
+	}
+	$$->code += $2->name + " " + $$->name + ", " + $1->name + ", " + $3->name + "\n";
 }
 | factor{
 	printf("	factor: %s", $1->name.c_str());
@@ -904,7 +919,11 @@ while_stmt: WHILE L_PAREN bool_expr R_PAREN L_BRACE EOL loop_bodies R_BRACE{
 	$$ = new CodeNode;
 	std::string tempLabel1 = newLabel();
 	std::string tempLabel2 = newLabel();
-	$$->code = ": " + tempLabel1 + "\n" + $3->code + "\n" + "! " + $3->name + ", " + $3->name + "\n";
+	$$->code = ": " + tempLabel1 + "\n";
+	if($3->code != ""){
+		$$->code += $3->code + "\n";
+	}
+	$$->code += "! " + $3->name + ", " + $3->name + "\n";
 	//We want to jump to the end of the while statement if the bool_expr is false, so we need to invert the result of bool_expr
 	$$->code += "?:= " + tempLabel2 + ", " + $3->name + "\n";
 	//in case there is a break statement, we want to change the labels first
