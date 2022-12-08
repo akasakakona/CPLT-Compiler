@@ -174,7 +174,7 @@ std::ofstream fout;
 //%token NOT
 
 %type <node> function_defs function_def program stmt arguments
-%type <node> function_body
+%type <node> function_body loop_bodies function_bodies if_bodies
 %type <node> declaration_stmt parameter if_stmt while_stmt assignment_stmt
 %type <node> expression loop_body declaration data_ else_stmt else_if_stmt
 %type <node> parameter_ if_body data arguments_ array 
@@ -218,7 +218,7 @@ function_def : FUNCTION ID L_PAREN {
 	currentTable = symbolTable.at(currTableIndex);
 	$<node>$ = new CodeNode;
 	$<node>$->code = "func " + std::string($2) + "\n";
-}arguments R_PAREN L_BRACE EOL function_body EOL R_BRACE EOL {
+}arguments R_PAREN L_BRACE EOL function_bodies EOL R_BRACE EOL {
 	printf("function\n"); 
 	$$->code += $<node>4->code + $<node>8->code + "endfunc";
 	//exiting the scope. Therefore deleting the symbol table
@@ -291,6 +291,17 @@ stmt: {
  | COMMENT {printf(" comment\n");}
  ;
 
+if_bodies: {
+	$$ = nullptr;
+}
+| if_body EOL if_bodies EOL {
+	$$ = new CodeNode;
+	$$->code = $1->code;
+	if($3 != nullptr){
+		$$->code += "\n" + $3->code;
+	}
+}
+
  if_body: declaration_stmt {
 	printf(" declaration_stmt\n");
 	$$ = $1;
@@ -337,7 +348,17 @@ stmt: {
 	}
  ;
 
-//FIXME: needs to be completed
+function_bodies:{
+	$$ = nullptr;
+}
+| function_body EOL function_bodies EOL{
+	$$ = new CodeNode;
+	$$->code = $1->code;
+	if($3 != nullptr){
+		$$->code += "\n" + $3->code;
+	}
+}
+
  function_body:declaration_stmt{
 	$$ = $1;
  }
@@ -389,6 +410,19 @@ stmt: {
  ;
 
 //FIXME: needs to be completed
+loop_bodies: {
+	printf(" empty loop_bodies\n");
+	$$ = nullptr;
+}
+| loop_body EOL loop_bodies{
+	printf("		loop_bodies\n");
+	$$ = new CodeNode;
+	$$->code = $1->code;
+	if($3 != nullptr){
+		$$->code += "\n" + $3->code;
+	}
+}
+
  loop_body: declaration_stmt{
 	$$ = $1;
  }
@@ -499,8 +533,8 @@ declaration_stmt: datatype ID declaration{
 			$$->code += "[]= " + std::string($2) + ", " + std::to_string(count) + ", " + token + "\n";
 			count++;
 		}
-		$$->code = ".[] " + std::string($2) + ", " + std::to_string(count+1) + "\n" + $$->code;
-
+		$$->code.pop_back();
+		$$->code = ".[] " + std::string($2) + ", " + std::to_string(count) + "\n" + $$->code;
 	}
 }
 | datatype ID L_BRACK expression R_BRACK declaration{
@@ -511,7 +545,9 @@ declaration_stmt: datatype ID declaration{
 		yyerror("array size must be an integer");
 	}
 	$$ = new CodeNode;
-	$$->code = $4->code + "\n";
+	if($4->code != ""){
+		$$->code = $4->code + "\n";
+	}
 	addSymbol(std::string($2), "array", currentTable);
 	if($6 == nullptr){ 
 		//In this case, things like "itg a[3]" is allowed, since we know the size of the array
@@ -526,7 +562,8 @@ declaration_stmt: datatype ID declaration{
 			$$->code += "[]= " + $$->name + ", " + std::to_string(count) + ", " + token + "\n";
 			count++;
 		}
-		$$->code = ".[] " + $$->name + ", " + std::to_string(count+1) + "\n" + $$->code;
+		$$->code.pop_back();
+		$$->code = ".[] " + $$->name + ", " + std::to_string(count) + "\n" + $$->code;
 	}
 };
 
@@ -816,7 +853,7 @@ data_: {
 }
 ;
 
-if_stmt: IF L_PAREN bool_expr R_PAREN L_BRACE EOL if_body EOL R_BRACE else_if_stmt else_stmt{
+if_stmt: IF L_PAREN bool_expr R_PAREN L_BRACE EOL if_bodies EOL R_BRACE else_if_stmt else_stmt{
 	std::string tempLabel1 = newLabel();
 	std::string tempLabel2 = newLabel();
 	$$ = new CodeNode;
@@ -847,14 +884,14 @@ if_stmt: IF L_PAREN bool_expr R_PAREN L_BRACE EOL if_body EOL R_BRACE else_if_st
 else_stmt :{
 	$$ = nullptr;
 }
-| ELSE L_BRACE EOL if_body EOL R_BRACE{
+| ELSE L_BRACE EOL if_bodies EOL R_BRACE{
 	$$ = $4;
 }
 
 else_if_stmt: {
 	$$ = nullptr;
 }
-| ELSE_IF L_PAREN bool_expr R_PAREN L_BRACE EOL if_body EOL R_BRACE else_if_stmt{
+| ELSE_IF L_PAREN bool_expr R_PAREN L_BRACE EOL if_bodies EOL R_BRACE else_if_stmt{
 	$$ = new CodeNode;
 	std::string tempLabel1 = newLabel();
 	$$->code = $3->code + "\n! " + $3->name + ", " + $3->name + "\n";
@@ -863,7 +900,7 @@ else_if_stmt: {
 }
 ;
 
-while_stmt : WHILE L_PAREN bool_expr R_PAREN L_BRACE EOL loop_body EOL R_BRACE{
+while_stmt: WHILE L_PAREN bool_expr R_PAREN L_BRACE EOL loop_bodies R_BRACE{
 	$$ = new CodeNode;
 	std::string tempLabel1 = newLabel();
 	std::string tempLabel2 = newLabel();
@@ -946,8 +983,8 @@ parameter_ : {
 %%
 
 void yyerror(const char *s) {
-	fprintf(stderr, "%s\n", s);
-	printf("error");
+	fprintf(stderr, "ERROR: %s\n", s);
+	exit(1);
 };
 
 std::string mycont(char* a, char* b){
