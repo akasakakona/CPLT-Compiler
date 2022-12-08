@@ -1,0 +1,4 @@
+bln a = true
+whl(a) {
+    out(2)
+}
