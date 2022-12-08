@@ -496,8 +496,24 @@ expression: math_expr{
 ;
 
 //FIXME: needs to be completed
-math_expr: term addop math_expr
-| term 
+math_expr: term addop math_expr {
+	$$ = new CodeNode;
+	$$->type = $1->type;
+	if($1->type != "int" && $3->type != "int"){
+		yyerror("type mismatch");
+	}
+	$$->name = newTemp();
+	$$->code = $1->code + " " + $2->name + " " + $$->code + "\n";
+	if ($2->name == "+") {
+		$$ = $1 + $3; 
+	}
+	else if ($2->name == "-") {
+		$$ = $1 - $3; 
+	}
+}
+| term {
+	$$ = $1;
+}
 ; 
 
 bool_expr: math_expr boolop math_expr{
