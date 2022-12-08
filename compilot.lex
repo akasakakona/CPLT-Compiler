@@ -11,13 +11,17 @@ COMMENT (@.*|@@(.|\n)*@@)
 INTEGER itg
 FUNCTION fnc
 BOOLEAN bln
-STRING str
 WHILE whl
 IF if
 ELSE els
 ELSE_IF elf
 BREAK brk
 RETURN ret
+OUT out
+IN in
+AND [&]
+OR [|]
+NOT [!]
 
 L_PAREN \(
 R_PAREN \)
@@ -56,7 +60,6 @@ EOL \n
 {INTEGER} {printf("Integer\n"); return INTEGER;}
 {FUNCTION} {printf("Function\n"); return FUNCTION;}
 {BOOLEAN} {printf("Boolean\n"); return BOOLEAN;}
-{STRING} {printf("String\n"); return STRING;}
 {WHILE} {printf("While\n"); return WHILE;}
 {IF} {printf("If\n"); return IF;}
 {ELSE} {printf("Else\n"); return ELSE;}
@@ -87,6 +90,11 @@ EOL \n
 {COMMA} {printf("Comma\n"); return COMMA;}
 {STRING_LITERAL} {printf("STRING_LITERAL %s\n", yytext); return STRING_LITERAL;}
 {RETURN} {printf("Return\n"); return RETURN;}
+{OUT} {printf("Out\n"); return OUT;}
+{IN} {printf("In\n"); return IN;}
+{AND} {printf("And\n"); return AND;}
+{OR} {printf("Or\n"); return OR;}
+{NOT} {printf("Not\n"); return NOT;}
 
 {ID} {printf("ID %s\n", yytext); return ID;}
 {NUMBER}	{printf("NUMBER %d\n", atoi(yytext)); return NUMBER;}

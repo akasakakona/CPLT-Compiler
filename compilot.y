@@ -1,34 +1,30 @@
 //2-3pm wch116
 
 %{
+#include <iostream>
+#include <string>
+#include <vector>
+#include <cstdlib>
+#include <fstream>
 #include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+using namespace std; 
 
 int yylex();
 void yyerror(const char *s);
 char* mycont(char* a, char* b);
 
 struct Bucket {
-	char name[16];
-	char type[16];
-	//char value[125];
-	char temVar[8];
-	struct Bucket* next;
+	string name;
+	string type;
+	Bucket* next;
 };
 
-void changeLabel(char *text, char *newLabel) {
-    char buffer[1025];
-    char *p = text;
-
-    while ((p = strstr(p, "TEMPLABEL"))) {
-        strncpy(buffer, text, p-text);
-        buffer[p-text] = '\0'; //reterminate string
-        strcat(buffer, "NEWLABEL");
-        strcat(buffer, p+sizeof("TEMPLABEL")-1);
-        strcpy(text, buffer);
-        p++;
-    }
+void changeLabel(string& text, string newLabel) {
+	string::size_type i = 0;
+	while((i = text.find("TEMPLABEL", i)) != string::npos) {
+		text.replace(i, 9, newLabel);
+		i += newLabel.length();
+	}
 }
 
 /****
@@ -47,33 +43,33 @@ d = 50
 
 
 struct CodeNode{
-	char code[1024];
-	char name[16];
-	char type[16];
+	string code;
+	string name;
+	string type;
 };
 
-int hash(char* a){
+int hash(string a){
 	int i;
 	int sum = 0;
-	for(i = 0; i < strlen(a); i++){
-		sum += a[i];
+	for(i = 0; i < a.size(); i++){
+		sum += a.at(i);
 	}
 	return sum % 50;
 }
 
-void delSymbole(char* a, struct Bucket* table[]){
+void delSymbole(string a, vector<Bucket*>& table){
 	int i = hash(a);
-	struct Bucket* temp = table[i];
-	struct Bucket* prev = NULL;
-	while(temp != NULL){
-		if(strcmp(temp->name, a) == 0){
-			if(prev == NULL){
+	Bucket* temp = table[i];
+	Bucket* prev = nullptr;
+	while(temp != nullptr){
+		if(temp->name == a){
+			if(prev == nullptr){
 				table[i] = temp->next;
 			}
 			else{
 				prev->next = temp->next;
 			}
-			free(temp);
+			delete temp;
 			return;
 		}
 		prev = temp;
@@ -93,67 +89,67 @@ NOTE: Maybe we shouldn't even let the users declare variables
 w/o assignment at all! This only further complicates the code
 *****/
 
-void addSymbol(char* name, char* type, char* tempVar, struct Bucket* table[]){
+void addSymbol(string name, string type, vector<Bucket*>& table){
 	int i = hash(name);
-	struct Bucket* temp = table[i];
-	while(temp != NULL){ //check if the symbol is already in the table
-		if(strcmp(temp->name, name) == 0){
+	Bucket* temp = table.at(i);
+	while(temp != nullptr){ //check if the symbol is already in the table
+		if(temp->name == name){
 			yyerror("Repeated variable declaration");
 			return;
 		}
 		temp = temp->next;
 	}
 	//if not, add it to the table
-	struct Bucket* new = (struct Bucket*)malloc(sizeof(struct Bucket));
-	strcpy(new->name, name);
-	strcpy(new->type, type);
-	if(tempVar != NULL){
-		strcpy(new->temVar, tempVar);
-	}else{
-		yyerror("Declaration without assignment is not allowed");
-	}
-	new->next = table[i];
-	table[i] = new;
+	Bucket* newBucket = new Bucket;
+	newBucket->name = name;
+	newBucket->type = type;
+	newBucket->next = table.at(i);
+	table.at(i) = newBucket;
 }
 
-struct Bucket* findSymbol(char* name, struct Bucket* table[]){
+Bucket* findSymbol(string name, const vector<Bucket*>& table){
 	int i = hash(name);
-	struct Bucket* temp = table[i];
-	while(temp != NULL){
-		if(strcmp(temp->name, name) == 0){
+	Bucket* temp = table.at(i);
+	while(temp != nullptr){
+		if(temp->name == name){
 			return temp;
 		}
 		temp = temp->next;
 	}
-	return NULL;
+	return nullptr;
 }
 
-char* newTemp(){
+string newTemp(){
 	static int i = 0;
-	char* temp = (char*)malloc(8);
-	sprintf(temp, "t%d", i);
+	string temp = "t";
+	temp += to_string(i);
 	i++;
 	return temp;
 }
-
-char* newLabel(){
+string newLabel(){
 	static int j = 0;
-	char* temp = (char*)malloc(8);
-	sprintf(temp, "L%d", j);
+	string temp = "L";
+	temp += to_string(j);
 	i++;
 	return temp;
 }
 
+vector<vector<Bucket*>> symbolTable(1, vector<Bucket*>(50, nullptr));
 
-struct Bucket* currentTable = malloc(51 * sizeof(struct Bucket*));
+currTableIndex = 0;
+vector<Bucket*> currentTable = symbolTable.at(0);
 
-FILE* fp;
+ofstream fout("output.txt");
+if(!fout.is_open()){
+	printf("Error opening file\n");
+	exit(1);
+}
 
 %}
 
 %union {
-    char* str;
-	struct CodeNode* node;
+    string str;
+	CodeNode* node;
 }
 /* declare tokens */
 %token NUMBER
@@ -182,26 +178,69 @@ FILE* fp;
 %token TRUE
 %token FALSE
 %token COMMENT
+%token OUT
+%token IN
+%token AND
+%token OR
+%token NOT
 
+%type <node> function_defs function_def program stmt
+%type <node> arguments function_body
+%type <node> declaration_stmt parameter if_stmt while_stmt assignment_stmt
+%type <node> expression loop_body assignment declaration data_ else_stmt else_if_stmt
+%type <node> parameter_
 %type <node> datatype bool_expr math_expr boolop term addop mulop factor
-%type <str> TRUE FALSE ID
 
 %%
-result: program{
-	fputs($1->code, fp);
-	printf("%s\n", $1->code);
+result: function_defs program{
+	fout << $1->code << endl << "func main" << endl << $2->code << endl << "endfunc" << endl;
+	printf("%s\nfunc main\n%s\nendfunc\n", $1->code, $2->code);
+}
+
+function_defs : function_defs function_def{
+	$$ = new CodeNode;
+	if($1 != nullptr){
+		$$->code = $1->code + "\n";
+	}
+	$$->code += $2->code;
+}
+
+function_def : {
+	$$ = nullptr;
+}
+| FUNCTION ID L_PAREN {
+	printf("function\n");
+	if(findSymbol($2, currentTable) != nullptr){
+		yyerror("ID already declared");
+	}
+	if($2 == "main"){
+		yyerror("main function cannot be declared");
+	}
+	addSymbol($2, "function", currentTable);
+	//creating and entering a new scope. Therefore creating a new symbol table
+	currentTableIndex++;
+	symbolTable.push_back(vector<Bucket*>(50, nullptr));
+	currentTable = symbolTable.at(currentTableIndex);
+	$$ = new CodeNode;
+	$$->code = "func " + $2 + "\n";
+}arguments R_PAREN L_BRACE EOL function_body EOL R_BRACE EOL {
+	printf("function\n"); 
+	$$->code += $4->code + $8->code + "endfunc";
+	//exiting the scope. Therefore deleting the symbol table
+	symbolTable.pop_back();
+	currentTableIndex--;
+	currentTable = symbolTable.at(currentTableIndex);
 }
 
 program: stmt{
-	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
-	strcpy($$->code, $1->code);
+	$$ = new CodeNode;
+	$$->code = $1->code;
 }
 | program EOL stmt{
-	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
-	strcpy($$->code, $1->code);
-	if($3 != NULL){
-		strcat($$->code, "\n");
-		strcat($$->code, $3->code);
+	$$ = new CodeNode;
+	$$->code = $1->code;
+	if($3 != nullptr){
+		$$->code += "\n" + $3->code;
 	}
 }
 ;
@@ -209,85 +248,65 @@ program: stmt{
 stmt: 
  | declaration_stmt {
 	printf(" declaration_stmt\n");
-	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
-	strcpy($$->code, $1->code);
+	$$ = $1;
 	}
  | ID L_PAREN parameter R_PAREN {
-	if(findSymbol($1, symbolTable) == NULL){
+	if(findSymbol($1, currentTable) == nullptr){
 		yyerror("Function not declared");
 	}
-	if(strcmp(findSymbol($1, symbolTable)->type, "function") != 0){
+	if(strcmp(findSymbol($1, currentTable)->type, "function") != 0){
 		yyerror("Not a function");
 	}
 	printf(" function_call\n");
-	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
-	strcpy($$->code, $3->code);
-	strcat($$->code, "\n");
-	strcat($$->code, "call ");
-	strcat($$->code, $1);
-	strcat($$->code, ", ");
-	strcat($$->code, newTemp());
-	}
+	$$ = new CodeNode;
+	$$->code = $3->code + "\n" + "call " + $1;
+ }
  | if_stmt {
 	printf(" if_stmt\n");
-	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
-	strcpy($$->code, $1->code);
+	$$ = $1;
 	}
  | while_stmt {
 	printf(" while_stmt\n");
-	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
-	strcpy($$->code, $1->code);
+	$$ = $1;
 	}
  | assignment_stmt {
 	printf(" assignment_stmt\n");
-	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
-	strcpy($$->code, $1->code);
+	$$ = $1;
 	}
- | datatype FUNCTION ID L_PAREN arguments R_PAREN L_BRACE EOL function_body EOL R_BRACE EOL {
-	printf("function\n");
-	if(findSymbol($3, symbolTable) != NULL){
-		yyerror("ID already declared");
-	}
-
-	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
-
-	}
+ | OUT L_PAREN ID R_PAREN {
+	printf(" out\n");
+ }
  | COMMENT {printf(" comment\n");}
  ;
 
  if_body: 
  | declaration_stmt {
 	printf(" declaration_stmt\n");
-	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
-	strcpy($$->code, $1->code);
-	}
+	$$ = $1;
+    }
  | ID L_PAREN parameter R_PAREN {
-	if(findSymbol($1, symbolTable) == NULL){
+	if(findSymbol($1, currentTable) == nullptr){
 		yyerror("Function not declared");
 	}
-	if(strcmp(findSymbol($1, symbolTable)->type, "function") != 0){
+	if(strcmp(findSymbol($1, currentTable)->type, "function") != 0){
 		yyerror("Not a function");
 	}
 	printf(" function_call\n");
-	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
-	strcpy($$->code, $3->code);
-	strcat($$->code, "\n");
-	strcat($$->code, "call ");
-	strcat($$->code, $1);
-	strcat($$->code, ", ");
-	strcat($$->code, newTemp());
+	$$ = new CodeNode;
+	$$->code = $3->code + "\n" + "call " + $1;
 	}
  | if_stmt {
 	printf(" if_stmt\n");
-	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
-	strcpy($$->code, $1->code);
+	$$ = $1;
 	}
  | while_stmt {
 	printf(" while_stmt\n");
-	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
-	strcpy($$->code, $1->code);
+	$$ = $1;
 	}
- | assignment_stmt {printf(" assignment_stmt\n");}
+ | assignment_stmt {
+	printf(" assignment_stmt\n");
+	$$ = $1;
+	}
  | COMMENT {printf(" comment\n");}
  ;
 
@@ -309,31 +328,31 @@ stmt:
  | ID L_PAREN parameter R_PAREN {printf(" function_call\n");}
  | BREAK {
 	printf("break");
-	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
-	strcpy($$->code, ":=TEMPLABEL");
+	$$ = new CodeNode;
+	$$->code = ":=TEMPLABEL";
 	}
  ;
 
 
 assignment_stmt: ID ASSIGN assignment{
-	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
-	Bucket* var = findSymbol($1, symbolTable);
-	if(var == NULL){
+	$$ = new CodeNode;
+	Bucket* var = findSymbol($1, currentTable);
+	if(var == nullptr){
 		yyerror("Variable not declared");
 	}
 	if(strcmp(var->type, $3->type) != 0){
 		yyerror("Type mismatch");
 	}
-	strcpy($$->code, $3->code);
-	strcat($$->code, "\n= ");
-	strcat($$->code, var->temVar);
-	strcat($$->code, ", ");
-	strcat($$->code, $3->name);
+	// strcpy($$->code, $3->code);
+	// strcat($$->code, "\n= ");
+	// strcat($$->code, var->temVar);
+	// strcat($$->code, ", ");
+	// strcat($$->code, $3->name);
 }
 | ID L_BRACK expression R_BRACK ASSIGN assignment{
-	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
-	Bucket* var = findSymbol($1, symbolTable);
-	if(var == NULL){
+	$$ = new CodeNode;
+	Bucket* var = findSymbol($1, currentTable);
+	if(var == nullptr){
 		yyerror("Variable not declared");
 	}
 	if(strcmp("int", $6->type) != 0){
@@ -355,13 +374,13 @@ assignment_stmt: ID ASSIGN assignment{
 }
 
 assignment: expression{
-	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	$$ = new CodeNode;
 	strcpy($$->code, $1->code);
 	strcpy($$->name, $1->name);
 	strcpy($$->type, $1->type);
 }
 | array{
-	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	$$ = new CodeNode;
 	strcpy($$->code, $1->code);
 	strcpy($$->name, $1->name);
 	strcpy($$->type, $1->type);
@@ -369,32 +388,32 @@ assignment: expression{
 ;
 
 declaration_stmt: datatype ID declaration{
-	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	$$ = new CodeNode;
 	strcpy($$->code, $3->code);
-	if($3 != NULL){
-		addSymbol($2, $1->type, newTemp(), symbolTable);
+	if($3 != nullptr){
+		addSymbol($2, $1->type, currentTable);
 	}else{
 		yyerror("Declaration without assignment is not allowed");
 	}
 }
 | INTEGER ID L_BRACK R_BRACK declaration{
-	if(findSymbol($2, symbolTable) != NULL){
+	if(findSymbol($2, currentTable) != nullptr){
 		yyerror("redeclaration of variable");
 	}
 	$$ = (CodeNode*)malloc(sizeof(CodeNode));
-	if($5 == NULL){ 
+	if($5 == nullptr){ 
 		yyerror("array size not specified"); //codes like: "itg a[]" is not allowed
 	}else{
 		//if the type field of declaration node is not empty, then it is a declaration with assignment
 		//In that case, we need to generate a new temporary variable, therefore we use newTemp() as the third parameter
 		//and we also need to generate code for the assignment
-		strcpy($$->name, newTemp());
-		addSymbol($2, "array", $$->name, symbolTable);
+		strcpy($$->name, $2);
+		addSymbol($2, "array", currentTable);
 		char tempCode[1024];
 		int count = 0;
 		char* token = strtok($5->code, " ");
 		//generate the code that assigns the value to the array
-		while(token != NULL){
+		while(token != nullptr){
 			sprintf(tempCode + strlen(tempCode), "[]= %s, %d, %s\n", $4, count, token);
 			count++;
 		}
@@ -410,7 +429,7 @@ declaration_stmt: datatype ID declaration{
 	}
 }
 | INTEGER ID L_BRACK expression R_BRACK declaration{
-	if(findSymbol($2, symbolTable) != NULL){
+	if(findSymbol($2, currentTable) != nullptr){
 		yyerror("redeclaration of variable");
 	}
 	if(strcmp($4->type, "int") != 0){
@@ -419,21 +438,21 @@ declaration_stmt: datatype ID declaration{
 	$$ = (CodeNode*)malloc(sizeof(CodeNode));
 	strcpy($$->code, $4->code);
 	strcat($$->code, "\n");
-	if($6 == NULL){ 
+	if($6 == nullptr){ 
 		//In this case, things like "itg a[3]" is allowed, since we know the size of the array
-		strcpy($$->name, newTemp());
-		addSymbol($2, "array", $$->name, symbolTable);
+		strcpy($$->name, $2);
+		addSymbol($2, "array", currentTable);
 		sprintf($$->code, ".[] %s, %s", $$->name, $4->name);
 	}else{
 		//if the type field of declaration node is not empty, then it is a declaration with assignment
 		//In that case, we need to generate a new temporary variable, therefore we use newTemp() as the third parameter
 		//and we also need to generate code for the assignment
-		strcpy($$->name, newTemp());
-		addSymbol($2, tempType, $$->name, symbolTable);
+		strcpy($$->name, $2);
+		addSymbol($2, tempType, currentTable);
 		char tempCode[1024];
 		int count = 0;
 		char* token = strtok($5->code, " ");
-		while(token != NULL){
+		while(token != nullptr){
 			sprintf(tempCode + strlen(tempCode), "[]= %s, %d, %s\n", $4, count, token);
 			count++;
 		}
@@ -450,7 +469,7 @@ declaration_stmt: datatype ID declaration{
 };
 
 declaration: {
-	$$ = NULL
+	$$ = nullptr
 }
 | ASSIGN expression{
 	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
@@ -471,14 +490,14 @@ datatype: INTEGER{
 ;
 
 expression: math_expr{
-	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	$$ = new CodeNode;
 	strcpy($$->code, $1->code);
 	strcpy($$->name, $1->name);
 	strcpy($$->type, $1->type);
 }
 | ID L_PAREN parameter R_PAREN {
-	struct Bucket* funct = findSymbol($1, symbolTable);
-	if(funct == NULL){
+	struct Bucket* funct = findSymbol($1, currentTable);
+	if(funct == nullptr){
 		yyerror("Undeclared function");
 	}
 	if(strcmp(funct->type, "function") != 0){
@@ -488,7 +507,7 @@ expression: math_expr{
 	NOTE: According to the professor, we do not need to check the validity of the function call
 	So a function table is optional
 	*******/
-	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	$$ = new CodeNode;
 	strcpy($$->name, newTemp());
 	strcpy($$->code, $3->code);
 	strcat($$->code, "\n");
@@ -498,18 +517,18 @@ expression: math_expr{
 	strcat($$->code, $$->name);
 } //function call
 | TRUE{
-	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	$$ = new CodeNode;
 	strcpy($$->name, "1");
 	strcpy($$->type, "bool");
 }
 | FALSE{
-	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	$$ = new CodeNode;
 	strcpy($$->name, "0");
 	strcpy($$->type, "bool");
 }
 | ID L_BRACK expression R_BRACK{
-	struct Bucket* array = findSymbol($1, symbolTable);
-	if(array == NULL){
+	struct Bucket* array = findSymbol($1, currentTable);
+	if(array == nullptr){
 		yyerror("Undeclared array");
 	}
 	if(strcmp(array->type, "array") != 0){
@@ -518,13 +537,13 @@ expression: math_expr{
 	if(strcmp($3->type, "int") != 0){
 		yyerror("Array index must be an integer");
 	}
-	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	$$ = new CodeNode;
 	strcpy($$->name, newTemp());
 	sprintf($$->code, "=[] %s, %s, %s", $$->name, $1 , $3->name);
 	strcpy($$->type, array->type);
 } //array access
 | array {
-	$$ = (struct CodeNode*)malloc(sizeof(struct CodeNode));
+	$$ = new CodeNode;
 	strcpy($$->name, $1->name);
 	strcpy($$->code, $1->code);
 	strcpy($$->type, $1->type);
@@ -565,8 +584,8 @@ bool_expr: math_expr boolop math_expr{
 	strcpy($$->name, "0");
 }
 | ID{
-	struct Bucket* var = findSymbol($1, symbolTable);
-	if(var == NULL){
+	struct Bucket* var = findSymbol($1, currentTable);
+	if(var == nullptr){
 		yyerror("Undeclared variable");
 	}
 	if(strcmp(var->type, "bool") != 0){
@@ -577,8 +596,8 @@ bool_expr: math_expr boolop math_expr{
 	strcpy($$->name, var->value);
 }
 | ID L_PAREN parameter R_PAREN {
-	struct Bucket* funct = findSymbol($1, symbolTable);
-	if(funct == NULL){
+	struct Bucket* funct = findSymbol($1, currentTable);
+	if(funct == nullptr){
 		yyerror("Undeclared function");
 	}
 	if(strcmp(funct->type, "function") != 0){
@@ -591,11 +610,11 @@ bool_expr: math_expr boolop math_expr{
 	char temp[1024];
 	strcpy(temp, $3->code);
 	char* token = strtok(temp, " ");
-	while(token != NULL){
+	while(token != nullptr){
 		strcpy($$->code, "param ");
 		strcat($$->code, token);
 		strcat($$->code, "\n");
-		token = strtok(NULL, " ");
+		token = strtok(nullptr, " ");
 	}
 	strcat($$->code, "call ");
 	strcat($$->code, $1);
@@ -672,86 +691,79 @@ term: term mulop factor{
 ;
 
 mulop: MULT{
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->name, "*");
+	$$ = new CodeNode;
+	$$->name = "*";
 }
 | DIV{
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->name, "/");
+	$$ = new CodeNode;
+	$$->name = "/";
 }
 ;
 
 factor: L_PAREN math_expr R_PAREN{
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->type, $2->type);
-	strcpy($$->name, $2->name);
-	strcpy($$->code, $2->code);
+	$$ = $2;
 }
 | NUMBER{
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->type, "int");
-	strcpy($$->name, $1);
+	$$ = new CodeNode;
+	$$->type = "int";
+	$$->name = $1;
 }
 | ID{
-	struct Bucket* var = findSymbol($1, symbolTable);
-	if(var == NULL){
+	struct Bucket* var = findSymbol($1, currentTable);
+	if(var == nullptr){
 		yyerror("Undeclared variable");
 	}
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
+	$$ = new CodeNode;
 	strcpy($$->type, var->type);
 	strcpy($$->name, var->value);
 }
 ;
 
 array: L_BRACE data data_ R_BRACE{ //All the data is stored in the code field of the CodeNode, separated by a space
-	if(strcmp($2->type, "int") == 0){ //only int arrays are allowed
+	if($2->type != "int"){ //only int arrays are allowed
 		yyerror("Type mismatch. Arrays must be of type int");
 	}
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->type, "array");
-	strcpy($$->code, $2->code);
-	if($3 != NULL){
+	$$ = new CodeNode;
+	$$->type = "array";
+	$$->code = $2->code;
+	if($3 != nullptr){
 		strcat($$->code, " ");
 		strcat($$->code, $3->code);
 	}
 };
 
 data : NUMBER{
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->type, "int");
-	strcpy($$->code, $1);
+	$$ = new CodeNode;
+	$$->type = "int";
+	$$->code = $1;
 }
 | ID{
-	struct Bucket* var = findSymbol($1, symbolTable);
-	if(var == NULL){
+	Bucket* var = findSymbol($1, currentTable);
+	if(var == nullptr){
 		yyerror("Undeclared variable");
 	}
-	if(strcmp(var->type, "int") != 0){
+	if(var->type != "int"){ //only int arrays are allowed
 		yyerror("Type mismatch. Arrays must be of type int");
 	}
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->type, var->type);
-	if(strcmp(var->value, "") == 0){
-		yyerror("Array element not initialized");
-	}
-	strcpy($$->code, var->tempVar);
+	$$ = new CodeNode;
+	$$->type = "int";
+	$$->code = var->name;
 }
 ;
 
 
 data_: {
-	$$ = NULL;
+	$$ = nullptr;
 }
 | COMMA data data_{
-	if(strcmp($2->type, "int") == 0){ //only int arrays are allowed
+	if($2->type != "int"){ //only int arrays are allowed
 		yyerror("Type mismatch. Arrays must be of type int");
 	}
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->type, $2->type);
-	strcpy($$->code, $2->code);
-	if($3 != NULL){
-		strcat($$->code, " ");
-		strcat($$->code, $3->code);
+	$$ = new CodeNode;
+	$$->type = $2->type;
+	$$->code = $2->code;
+	if($3 != nullptr){
+		$$->code += " " + $3->code;
 	}
 }
 ;
@@ -759,136 +771,82 @@ data_: {
 if_stmt : IF L_PAREN bool_expr R_PAREN L_BRACE EOL if_body EOL R_BRACE else_if_stmt else_stmt{
 	char* tempLabel1 = newLabel();
 	char* tempLabel2 = newLabel();
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode))
-	strcpy($$->code, $3->code);
-	strcat($$->code, "\n");
-	strcat($$->code, "! ");
-	strcat($$->code, $3->name);
-	strcat($$->code, ", ");
-	strcat($$->code, $3->name);
-	strcat($$->code, "\n");
+	$$ = new CodeNode;
 	//We want to jump to the else if statement if the bool_expr is false
 	//so we need to invert the result of bool_expr
-	strcat($$->code, "?:=");
-	strcat($$->code, tempLabel1);
-	strcat($$->code, ", ");
-	strcat($$->code, $3->name);
-	strcat($$->code, "\n");
-	strcat($$->code, $7->code);//finish running program
-	strcat($$->code, "\n");
-	strcat($$->code, ":=");
-	strcat($$->code, tempLabel2);
-	strcat($$->code, "\n");//go to the end of the if statement
-	strcat($$->code, ":");
-	strcat($$->code, tempLabel1);//generate a new label to go to if the bool_expr is false
+	$$->code = $3->code + "\n! " + $3->name + ", " + $3->name + "\n";
+	//finish running program
+	//go to the end of the if statement
+    //generate a new label to go to if the bool_expr is false
+	$$->code += "?:= " + tempLabel1 + ", " + $3->name + "\n" + $7->code + "\n:= " + tempLabel2 + "\n:" + tempLabel1;
 	tempLabel = newLabel();
-	if($10 != NULL){
-		strcat($$->code, "\n");
+	if($10 != nullptr){
 		changeLabel($10->code, tempLabel2); //change TEMPLABEL to go to the end of if statement
-		strcat($$->code, $10->code);
+		$$->code += "\n" + $10->code;
 	}
-	if($11 != NULL){
-		strcat($$->code, "\n");
+	if($11 != nullptr){
 		//since this is else statement
 		//it automatically goes to the end of the if statement
 		//once it is done executing
 		//therefore, no need to change the label
-		strcat($$->code, $11->code);
+		$$->code += "\n" + $11->code;
 	}
-	strcat($$->code, "\n:");
-	strcat($$->code, tempLabel2);//set the end of the if statement
+	$$->code += "\n:" + tempLabel2; //set the end of the if statement
 };
 
 else_stmt :{
-	$$ = NULL;
+	$$ = nullptr;
 }
 | ELSE L_BRACE EOL if_body EOL R_BRACE{
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcat($$->code, $4->code);
+	$$ = $4;
 }
 
 else_if_stmt: {
-	$$ = NULL;
+	$$ = nullptr;
 }
 | ELSE_IF L_PAREN bool_expr R_PAREN L_BRACE EOL if_body EOL R_BRACE else_if_stmt{
 	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	char* tempLabel1 = newLabel();
-	strcat($$->code, $3->code);
-	strcat($$->code, "\n");
-	strcat($$->code, "! ");
-	strcat($$->code, $3->name);
-	strcat($$->code, ", ");
-	strcat($$->code, $3->name);
-	strcat($$->code, "\n");
+	string tempLabel1 = newLabel();
+	$$->code = $3->code + "\n! " + $3->name + ", " + $3->name + "\n";
 	//We want to jump to the else if statement if the bool_expr is false, so we need to invert the result of bool_expr
-	strcat($$->code, "?:=");
-	strcat($$->code, tempLabel1);
-	strcat($$->code, ", ");
-	strcat($$->code, $3->name);
-	strcat($$->code, "\n");
-	strcat($$->code, $7->code);
-	strcat($$->code, "\n");
-	strcat($$->code, ":=TEMPLABEL\n:");
-	strcat($$->code, tempLabel1);
-	if($10 != NULL){
+	$$->code += "?:=" + tempLabel1 + ", " + $3->name + "\n" + $7->code + "\n:=TEMPLABEL\n:" + tempLabel1;
+	if($10 != nullptr){
 		strcat($$->code, "\n");
-		strcat($$->code, $9->code);
+		changeLabel($10->code, "TEMPLABEL");
+		strcat($$->code, $10->code);
 	}
 }
 ;
 
 while_stmt : WHILE L_PAREN bool_expr R_PAREN L_BRACE EOL loop_body EOL R_BRACE{
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	char* tempLabel1 = newLabel();
-	char* tempLabel2 = newLabel();
-	strcpy($$->code, ":");
-	strcat($$->code, tempLabel1);
-	strcat($$->code, "\n");
-	strcat($$->code, $3->code);
-	strcat($$->code, "\n");
-	strcat($$->code, "! ");
-	strcat($$->code, $3->name);
-	strcat($$->code, ", ");
-	strcat($$->code, $3->name);
-	strcat($$->code, "\n");
+	$$ = new CodeNode;
+	string tempLabel1 = newLabel();
+	string tempLabel2 = newLabel();
+	$$->code = : + tempLabel1 + "\n" + $3->code + "\n" + "! " + $3->name + ", " + $3->name + "\n";
 	//We want to jump to the end of the while statement if the bool_expr is false, so we need to invert the result of bool_expr
-	strcat($$->code, "?:=");
-	strcat($$->code, tempLabel2);
-	strcat($$->code, ", ");
-	strcat($$->code, $3->name);
-	strcat($$->code, "\n");
+	$$->code += "?:=" + tempLabel2 + ", " + $3->name + "\n";
 	//in case there is a break statement, we want to change the labels first
 	changeLabel($7->code, tempLabel2);
-	strcat($$->code, $7->code);
-	strcat($$->code, "\n");
-	strcat($$->code, ":=");
-	strcat($$->code, tempLabel1);
-	strcat($$->code, "\n");
-	strcat($$->code, ":");
-	strcat($$->code, tempLabel2);
+	$$->code += $7->code + "\n" + ":=" + tempLabel1 + "\n:" + tempLabel2;
 }
 ;
 
 //fuck type checking, not doing it
 arguments: datatype ID arguments_{
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->code, ".c");
-	strcat($$->code, $2);
-	if($2 != NULL){
-		strcat($$->code, "\n");
-		strcat($$->code, $3->code);
+	$$ = new CodeNode;
+	$$->code = ". " + $2;
+	if($3 != nullptr){
+		$$->code += "\n" + $3->code;
 	}
 }
 ;
 
 arguments_ :  
 | COMMA datatype ID arguments_{
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcat($$->code, ". ");
-	strcpy($$->code, $2);
-	if($3 != NULL){
-		strcat($$->code, "\n");
-		strcat($$->code, $3->code);
+	$$ = new CodeNode;
+	$$->code = ". " + $2;
+	if($3 != nullptr){
+		$$->code += "\n" + $3->code;
 	}
 }
 ;
@@ -898,56 +856,47 @@ FIXME: We need to make chained symbol tables
 ***/
 
 parameter : {
-	$$ = NULL;
+	$$ = nullptr;
 }
 | NUMBER parameter_ {
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->code, "param ");
-	strcat($$->code, $1);
-	if($2 != NULL){
-		strcat($$->code, "\n");
-		strcat($$->code, $2->code);
+	$$ = new CodeNode;
+	$$->code = "param " + $1;
+	if($2 != nullptr){
+		$$->code += "\n" + $2->code;
 	}
 }
 | ID parameter_ {
 	Bucket* var = findSymbol($1);
-	if(var == NULL){
-		printf("Error: Variable %s is not declared\n", $1);
-		exit(1);
+	if(var == nullptr){
+		yyerror("Undeclared variable");
 	}
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->code, "param ");
-	strcat($$->code, var->name);
-	if($2 != NULL){
-		strcat($$->code, "\n");
-		strcat($$->code, $2->code);
+	$$ = new CodeNode;
+	$$->code = "param " + var->name;
+	if($2 != nullptr){
+		$$->code += "\n" + $2->code;
 	}
 }
 ;
 
 parameter_ : {
-	$$ = NULL;
+	$$ = nullptr;
 }
 | COMMA NUMBER parameter_ {
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->code, "param ");
-	strcat($$->code, $2);
-	if($3 != NULL){
-		strcat($$->code, "\n");
-		strcat($$->code, $3->code);
+	$$ = new CodeNode;
+	$$->code = "param " + $2;
+	if($3 != nullptr){
+		$$->code += "\n" + $3->code;
 	}
 }
 | COMMA ID parameter_ {
 	Bucket* var = findSymbol($2);
-	if(var == NULL){
+	if(var == nullptr){
 		yyerror("Undeclared variable");
 	}
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->code, "param ");
-	strcat($$->code, var->name);
-	if($3 != NULL){
-		strcat($$->code, "\n");
-		strcat($$->code, $3->code);
+	$$ = new CodeNode();
+	$$->code = "param " + var->name;
+	if($3 != nullptr){
+		$$->code += "\n" + $3->code;
 	}
 }
 ;
@@ -969,7 +918,7 @@ int main(int argc, char **argv)
 {
 	int i = 0;
 	for(i = 0; i < 50; i++){
-		symbolTable[i] = NULL;
+		currentTable[i] = nullptr;
 	} //initialize symbol table
 	fp = fopen("output.cplt", "w");
 	yyparse();
