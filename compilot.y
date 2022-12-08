@@ -511,10 +511,10 @@ math_expr: term addop math_expr {
 	//$$->name = newTemp();
 	$$->code = $1->code + " " + $2->name + " " + $3->code + "\n";
 	if ($2->name == "+") {
-		//maybe add .val field for computation 
+		$$->name = $1->name + $3->name;
 	}
 	else if ($2->name == "-") {
-		//same here
+		$$->name = $1->name + $3->name;
 	}
 }
 | term {
