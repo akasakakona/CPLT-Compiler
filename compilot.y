@@ -264,17 +264,15 @@ stmt: {
  | OUT L_PAREN expression R_PAREN {//FIXME: needs to complete IN and OUT, this should be available in all bodies
 	printf(" out\n");
 	$$ = new CodeNode;
- }
- | IN L_PAREN expression R_PAREN {
+	$$->code = $3->code + "\n" + ".> " + $3->name;
+	}
+ | IN L_PAREN ID R_PAREN {
 	printf(" in\n");
  }
  | COMMENT {printf(" comment\n");}
  ;
 
- if_body: {
-	yyerror("if body cannot be empty");
- }
- | declaration_stmt {
+ if_body: declaration_stmt {
 	printf(" declaration_stmt\n");
 	$$ = $1;
     }
@@ -305,10 +303,18 @@ stmt: {
  ;
 
 //FIXME: needs to be completed
- function_body:declaration_stmt
- | assignment_stmt
- | if_stmt
- | while_stmt
+ function_body:declaration_stmt{
+	$$ = $1;
+ }
+ | assignment_stmt{
+	$$ = $1;
+ }
+ | if_stmt{
+	$$ = $1;
+ }
+ | while_stmt{
+	$$ = $1;
+ }
  | RETURN expression {
 	printf(" return\n");
 	$$ = new CodeNode;
@@ -318,21 +324,43 @@ stmt: {
 	$$ = new CodeNode;
 	$$->code = "ret";
 	}
- | ID L_PAREN parameter R_PAREN {printf(" function_call\n");}
+ | ID L_PAREN parameter R_PAREN {
+	printf(" function_call\n");
+	if(findSymbol(std::string($1), currentTable) == nullptr){
+		yyerror("Function not declared");
+	}
+	$$ = new CodeNode;
+	$$->code = $3->code + "\n" + "call " + std::string($1);
+	}
  | COMMENT{
 	$$ = nullptr;
  }
  ;
 
 //FIXME: needs to be completed
- loop_body: declaration_stmt
- | assignment_stmt
- | if_stmt
- | while_stmt
+ loop_body: declaration_stmt{
+	$$ = $1;
+ }
+ | assignment_stmt{
+	$$ = $1;
+ }
+ | if_stmt{
+	$$ = $1;
+ }
+ | while_stmt{
+	$$ = $1;
+ }
  | COMMENT{
 	$$ = nullptr;
  }
- | ID L_PAREN parameter R_PAREN {printf(" function_call\n");}
+ | ID L_PAREN parameter R_PAREN {
+	printf(" function_call\n");
+	if(findSymbol(std::string($1), currentTable) == nullptr){
+		yyerror("Function not declared");
+	}
+	$$ = new CodeNode;
+	$$->code = $3->code + "\n" + "call " + std::string($1);
+	}
  | BREAK {
 	printf("break");
 	$$ = new CodeNode;
@@ -496,8 +524,18 @@ expression: math_expr{
 ;
 
 //FIXME: needs to be completed
-math_expr: term addop math_expr
-| term 
+math_expr: term addop math_expr{
+	$$ = new CodeNode;
+	if($1->type != "int" || $3->type != "int"){
+		yyerror("type mismatch");
+	}
+	$$->name = newTemp();
+	$$->code = $1->code + "\n" + $3->code + "\n" + $2->name + " " + $$->name + ", " + $1->name + ", " + $3->name + "\n";
+	$$->type = "int";
+}
+| term {
+	$$ = $1;
+}
 ; 
 
 bool_expr: math_expr boolop math_expr{
