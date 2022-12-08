@@ -1,0 +1,14 @@
+itg fnc mult(args) {
+
+}
+
+itg fnc main () {
+    itg a
+    itg b
+    a = 3 + 5
+    b = a
+    itg c[] = {2, 3, 4}
+    itg d
+    d = mult(a, b)
+    ret 0 
+}

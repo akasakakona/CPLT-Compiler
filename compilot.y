@@ -261,7 +261,7 @@ stmt: {
 	printf(" assignment_stmt\n");
 	$$ = $1;
 	}
- | OUT L_PAREN expression R_PAREN {//FIXME: needs to complete IN and OUT, this should be available in all bodies
+ | OUT L_PAREN expression R_PAREN {
 	printf(" out\n");
 	$$ = new CodeNode;
 	$$->code = $3->code + "\n" + ".> " + $3->name;
@@ -545,6 +545,7 @@ bool_expr: math_expr boolop math_expr{
 	}
 	$$->name = newTemp();
 	$$->code = $1->code + "\n" + $3->code + "\n" + $2->name + " " + $$->name + ", " + $1->name + ", " + $3->name + "\n";
+	
 }
 | TRUE{
 	$$ = new CodeNode;
