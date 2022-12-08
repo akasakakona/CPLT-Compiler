@@ -1,5 +1,14 @@
-bln a = true
-whl(a) {
-    itg b = 4
+itg a[3] = {1, 2, 3}
+itg i = 0
+whl(i < 3) {
+    itg b = a[i]
     out(b)
+    i = i + 1
+    brk
+}
+i = 0
+whl(i < 3) {
+    itg c = a[i]
+    out(c)
+    i = i + 1
 }
