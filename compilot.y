@@ -305,8 +305,14 @@ stmt: {
  ;
 
 //FIXME: needs to be completed
- function_body:declaration_stmt
- | assignment_stmt
+ function_body:declaration_stmt {
+ 	$$ = new CodeNode;
+	$$->code = $1->code + "\n"
+ }
+ | assignment_stmt {
+	$$ = new CodeNode;
+	$$->code = $1->code + "\n";
+ }
  | if_stmt
  | while_stmt
  | RETURN expression {
