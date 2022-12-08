@@ -931,7 +931,7 @@ std::string mycont(char* a, char* b){
 
 int main(int argc, char **argv)
 {
-	fout.open("output.txt");
+	fout.open("output.mil");
 	if(!fout.is_open()){
 		printf("Error opening file\n");
 		exit(1);
