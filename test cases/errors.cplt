@@ -6,19 +6,18 @@ itg fnc mult() {
     itg c[] = {2, 3, 4}
     itg d
     d = c + a
-    whl d < 30 {
-        d = mult(a, b)
+    whl (d < 30) {
+        d = a * b
     }
-    out(d)
-    if a > b {
+    if (a > b) {
         out("a is greater than b")
-    } elf a == b {
+    } elf (a == b) {
         out("a is equal to b")
-    }els {
+    } els {
         out("a is smaller than b")
     } 
     
-    ret a * b
+    ret d
  }
  
 @@
