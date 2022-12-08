@@ -1,4 +1,5 @@
 bln a = true
 whl(a) {
-    out(2)
+    itg b = 4
+    out(b)
 }
