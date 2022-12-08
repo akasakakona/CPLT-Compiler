@@ -503,7 +503,7 @@ math_expr: term addop math_expr {
 		yyerror("type mismatch");
 	}
 	$$->name = newTemp();
-	$$->code = $1->code + " " + $2->name + " " + $$->code + "\n";
+	$$->code = $1->code + " " + $2->name + " " + $3->code + "\n";
 	if ($2->name == "+") {
 		$$ = $1 + $3; 
 	}
