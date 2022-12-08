@@ -6,22 +6,22 @@
 #include <vector>
 #include <cstdlib>
 #include <fstream>
+#include <sstream>
 #include <stdio.h>
-using namespace std; 
 
 int yylex();
 void yyerror(const char *s);
-char* mycont(char* a, char* b);
+std::string mycont(std::string a, std::string b);
 
 struct Bucket {
-	string name;
-	string type;
+	std::string name;
+	std::string type;
 	Bucket* next;
 };
 
-void changeLabel(string& text, string newLabel) {
-	string::size_type i = 0;
-	while((i = text.find("TEMPLABEL", i)) != string::npos) {
+void changeLabel(std::string& text, std::string newLabel) {
+	std::string::size_type i = 0;
+	while((i = text.find("TEMPLABEL", i)) != std::string::npos) {
 		text.replace(i, 9, newLabel);
 		i += newLabel.length();
 	}
@@ -43,12 +43,12 @@ d = 50
 
 
 struct CodeNode{
-	string code;
-	string name;
-	string type;
+	std::string code;
+	std::string name;
+	std::string type;
 };
 
-int hash(string a){
+int hash(std::string a){
 	int i;
 	int sum = 0;
 	for(i = 0; i < a.size(); i++){
@@ -57,7 +57,7 @@ int hash(string a){
 	return sum % 50;
 }
 
-void delSymbole(string a, vector<Bucket*>& table){
+void delSymbole(std::string a, std::vector<Bucket*>& table){
 	int i = hash(a);
 	Bucket* temp = table[i];
 	Bucket* prev = nullptr;
@@ -89,7 +89,7 @@ NOTE: Maybe we shouldn't even let the users declare variables
 w/o assignment at all! This only further complicates the code
 *****/
 
-void addSymbol(string name, string type, vector<Bucket*>& table){
+void addSymbol(std::string name, std::string type, std::vector<Bucket*>& table){
 	int i = hash(name);
 	Bucket* temp = table.at(i);
 	while(temp != nullptr){ //check if the symbol is already in the table
@@ -107,7 +107,7 @@ void addSymbol(string name, string type, vector<Bucket*>& table){
 	table.at(i) = newBucket;
 }
 
-Bucket* findSymbol(string name, const vector<Bucket*>& table){
+Bucket* findSymbol(std::string name, const std::vector<Bucket*>& table){
 	int i = hash(name);
 	Bucket* temp = table.at(i);
 	while(temp != nullptr){
@@ -119,40 +119,36 @@ Bucket* findSymbol(string name, const vector<Bucket*>& table){
 	return nullptr;
 }
 
-string newTemp(){
+std::string newTemp(){
 	static int i = 0;
-	string temp = "t";
-	temp += to_string(i);
+	std::string temp = "t";
+	temp += std::to_string(i);
 	i++;
 	return temp;
 }
-string newLabel(){
+std::string newLabel(){
 	static int j = 0;
-	string temp = "L";
-	temp += to_string(j);
-	i++;
+	std::string temp = "L";
+	temp += std::to_string(j);
+	j++;
 	return temp;
 }
 
-vector<vector<Bucket*>> symbolTable(1, vector<Bucket*>(50, nullptr));
+std::vector<std::vector<Bucket*> > symbolTable(1, std::vector<Bucket*>(50, nullptr));
 
-currTableIndex = 0;
-vector<Bucket*> currentTable = symbolTable.at(0);
+size_t currTableIndex = 0;
+std::vector<Bucket*> currentTable = symbolTable.at(0);
 
-ofstream fout("output.txt");
-if(!fout.is_open()){
-	printf("Error opening file\n");
-	exit(1);
-}
+std::ofstream fout;
 
 %}
 
 %union {
-    string str;
-	CodeNode* node;
+    char* string;
+	struct CodeNode* node;
 }
 /* declare tokens */
-%token <str> NUMBER
+%token <string> NUMBER
 %token PLUS MINUS MULT DIV
 %token ASSIGN
 %token EOL
@@ -172,7 +168,7 @@ if(!fout.is_open()){
 %token R_BRACE
 %token L_BRACK
 %token R_BRACK
-%token <str> ID
+%token <string> ID
 %token EQUAL NE SE BE SMALLER BIGGER
 %token FUNCTION
 %token TRUE
@@ -187,15 +183,15 @@ if(!fout.is_open()){
 %type <node> function_defs function_def program stmt arguments
 %type <node> function_body
 %type <node> declaration_stmt parameter if_stmt while_stmt assignment_stmt
-%type <node> expression loop_body assignment declaration data_ else_stmt else_if_stmt
+%type <node> expression loop_body declaration data_ else_stmt else_if_stmt
 %type <node> parameter_ if_body data arguments_ array 
 %type <node> datatype bool_expr math_expr boolop term addop mulop factor result
 
 %%
 
 result: function_defs EOL program{
-	fout << $1->code << endl << "func main" << endl << $3->code << endl << "endfunc" << endl;
-	printf("%s\nfunc main\n%s\nendfunc\n", $1->code, $3->code);
+	fout << $1->code << std::endl << "func main" << std::endl << $3->code << std::endl << "endfunc" << std::endl;
+	printf("%s\nfunc main\n%s\nendfunc\n", ($1->code).c_str(), ($3->code).c_str());
 }
 
 function_defs : {
@@ -211,26 +207,26 @@ function_defs : {
 
 function_def : FUNCTION ID L_PAREN {
 	printf("function\n");
-	if(findSymbol($2, currentTable) != nullptr){
+	if(findSymbol(std::string($2), currentTable) != nullptr){
 		yyerror("ID already declared");
 	}
-	if($2 == "main"){
+	if(std::string($2) == "main"){
 		yyerror("main function cannot be declared");
 	}
-	addSymbol($2, "function", currentTable);
+	addSymbol(std::string($2), "function", currentTable);
 	//creating and entering a new scope. Therefore creating a new symbol table
-	currentTableIndex++;
-	symbolTable.push_back(vector<Bucket*>(50, nullptr));
-	currentTable = symbolTable.at(currentTableIndex);
+	currTableIndex++;
+	symbolTable.push_back(std::vector<Bucket*>(50, nullptr));
+	currentTable = symbolTable.at(currTableIndex);
 	$<node>$ = new CodeNode;
-	$<node>$code = "func " + $2 + "\n";
+	$<node>$->code = "func " + std::string($2) + "\n";
 }arguments R_PAREN L_BRACE EOL function_body EOL R_BRACE EOL {
 	printf("function\n"); 
-	$$->code += $<node>1code + $5->code + "endfunc";
+	$$->code += $<node>4->code + $<node>8->code + "endfunc";
 	//exiting the scope. Therefore deleting the symbol table
 	symbolTable.pop_back();
-	currentTableIndex--;
-	currentTable = symbolTable.at(currentTableIndex);
+	currTableIndex--;
+	currentTable = symbolTable.at(currTableIndex);
 }
 
 program: stmt{
@@ -254,15 +250,15 @@ stmt: {
 	$$ = $1;
 	}
  | ID L_PAREN parameter R_PAREN {
-	if(findSymbol($1, currentTable) == nullptr){
+	if(findSymbol(std::string($1), currentTable) == nullptr){
 		yyerror("Function not declared");
 	}
-	if(strcmp(findSymbol($1, currentTable)->type, "function") != 0){
+	if(findSymbol(std::string($1), currentTable)->type != "function"){
 		yyerror("Not a function");
 	}
 	printf(" function_call\n");
 	$$ = new CodeNode;
-	$$->code = $3->code + "\n" + "call " + $1;
+	$$->code = $3->code + "\n" + "call " + std::string($1);
  }
  | if_stmt {
 	printf(" if_stmt\n");
@@ -276,8 +272,11 @@ stmt: {
 	printf(" assignment_stmt\n");
 	$$ = $1;
 	}
- | OUT L_PAREN ID R_PAREN {
+ | OUT L_PAREN expression R_PAREN {
 	printf(" out\n");
+ }
+ | IN L_PAREN expression R_PAREN {
+	printf(" in\n");
  }
  | COMMENT {printf(" comment\n");}
  ;
@@ -290,15 +289,15 @@ stmt: {
 	$$ = $1;
     }
  | ID L_PAREN parameter R_PAREN {
-	if(findSymbol($1, currentTable) == nullptr){
+	if(findSymbol(std::string($1), currentTable) == nullptr){
 		yyerror("Function not declared");
 	}
-	if(strcmp(findSymbol($1, currentTable)->type, "function") != 0){
+	if(findSymbol(std::string($1), currentTable)->type != "function"){
 		yyerror("Not a function");
 	}
 	printf(" function_call\n");
 	$$ = new CodeNode;
-	$$->code = $3->code + "\n" + "call " + $1;
+	$$->code = $3->code + "\n" + "call " + std::string($1);
 	}
  | if_stmt {
 	printf(" if_stmt\n");
@@ -350,129 +349,89 @@ stmt: {
  ;
 
 
-assignment_stmt: ID ASSIGN assignment{
+assignment_stmt: ID ASSIGN expression{
 	$$ = new CodeNode;
-	Bucket* var = findSymbol($1, currentTable);
+	Bucket* var = findSymbol(std::string($1), currentTable);
 	if(var == nullptr){
 		yyerror("Variable not declared");
 	}
-	if(strcmp(var->type, $3->type) != 0){
+	if(var->type != $3->type){
 		yyerror("Type mismatch");
 	}
-	// strcpy($$->code, $3->code);
-	// strcat($$->code, "\n= ");
-	// strcat($$->code, var->temVar);
-	// strcat($$->code, ", ");
-	// strcat($$->code, $3->name);
+	$$->code = $3->code + "\n= " + var->name + ", " + $3->name;
 }
-| ID L_BRACK expression R_BRACK ASSIGN assignment{
+| ID L_BRACK expression R_BRACK ASSIGN expression{
 	$$ = new CodeNode;
-	Bucket* var = findSymbol($1, currentTable);
+	Bucket* var = findSymbol(std::string($1), currentTable);
 	if(var == nullptr){
 		yyerror("Variable not declared");
 	}
-	if(strcmp("int", $6->type) != 0){
+	if($6->type != "int"){
 		yyerror("Type mismatch, array can only store int");
 	}
-	if(strcmp("int", $3->type) != 0){
+	if($3->type != "int"){
 		yyerror("Type mismatch, array index must be int");
 	}
-	strcpy($$->code, $3->code);
-	strcat($$->code, "\n");
-	strcat($$->code, $6->code);
-	//[]= dst, index, src
-	strcat($$->code, "\n[]= ");
-	strcat($$->code, var->temVar);
-	strcat($$->code, ", ");
-	strcat($$->code, $3->name);
-	strcat($$->code, ", ");
-	strcat($$->code, $6->name);
+	$$->code = $3->code + "\n" + $6->code + "\n[]= " + var->name + ", " + $3->name + ", " + $6->name;
 }
-
-assignment: expression{
-	$$ = new CodeNode;
-	strcpy($$->code, $1->code);
-	strcpy($$->name, $1->name);
-	strcpy($$->type, $1->type);
-}
-| array{
-	$$ = new CodeNode;
-	strcpy($$->code, $1->code);
-	strcpy($$->name, $1->name);
-	strcpy($$->type, $1->type);
-}
-;
 
 declaration_stmt: datatype ID declaration{
 	$$ = new CodeNode;
-	strcpy($$->code, $3->code);
+	addSymbol(std::string($2), $1->type, currentTable);
+	$$->code = $3->code + "\n. " + std::string($2);
 	if($3 != nullptr){
-		addSymbol($2, $1->type, currentTable);
-	}else{
-		yyerror("Declaration without assignment is not allowed");
+		$$->code += "\n= " + std::string($2) + ", " + $3->name;
 	}
 }
-| INTEGER ID L_BRACK R_BRACK declaration{
-	if(findSymbol($2, currentTable) != nullptr){
+| datatype ID L_BRACK R_BRACK declaration{
+	if(findSymbol(std::string($2), currentTable) != nullptr){
 		yyerror("redeclaration of variable");
 	}
-	$$ = (CodeNode*)malloc(sizeof(CodeNode));
+	$$ = new CodeNode;
 	if($5 == nullptr){ 
 		yyerror("array size not specified"); //codes like: "itg a[]" is not allowed
 	}else{
 		//if the type field of declaration node is not empty, then it is a declaration with assignment
 		//In that case, we need to generate a new temporary variable, therefore we use newTemp() as the third parameter
 		//and we also need to generate code for the assignment
-		strcpy($$->name, $2);
-		addSymbol($2, "array", currentTable);
-		char tempCode[1024];
+		$$->name = std::string($2);
+		addSymbol(std::string($2), "array", currentTable);
 		int count = 0;
-		char* token = strtok($5->code, " ");
+		std::istringstream iss($5->code);
+		std::string token = "";
 		//generate the code that assigns the value to the array
-		while(token != nullptr){
-			sprintf(tempCode + strlen(tempCode), "[]= %s, %d, %s\n", $2, count, token);
+		while(iss >> token){
+			$$->code += "[]= " + std::string($2) + ", " + std::to_string(count) + ", " + token + "\n";
 			count++;
 		}
-		tempCode[strlen(tempCode) - 1] = '\0';
-		memset($5->code, 0, sizeof($5->code));
-		sprintf($5->code, ".[] %s, %d", $2, count); //declare the array
-		if(strlen($5->code) + strlen(tempCode) < 1023){ 
-			//check if the code generated is too long
-			strcat($5->code, tempCode);
-		}else{
-			yyerror("Code too long! Buffer overflow!");
-		}
+		$$->code = ".[] " + std::string($2) + ", " + std::to_string(count+1) + "\n" + $$->code;
+
 	}
 }
-| INTEGER ID L_BRACK expression R_BRACK declaration{
-	if(findSymbol($2, currentTable) != nullptr){
+| datatype ID L_BRACK expression R_BRACK declaration{
+	if(findSymbol(std::string($2), currentTable) != nullptr){
 		yyerror("redeclaration of variable");
 	}
-	if(strcmp($4->type, "int") != 0){
+	if($4->type != "int"){
 		yyerror("array size must be an integer");
 	}
-	$$ = (CodeNode*)malloc(sizeof(CodeNode));
-	strcpy($$->code, $4->code);
-	strcat($$->code, "\n");
+	$$ = new CodeNode;
+	$$->code = $4->code + "\n";
+	addSymbol(std::string($2), "array", currentTable);
 	if($6 == nullptr){ 
 		//In this case, things like "itg a[3]" is allowed, since we know the size of the array
-		strcpy($$->name, $2);
-		addSymbol($2, "array", currentTable);
-		sprintf($$->code, ".[] %s, %s", $$->name, $4->name);
+		$$->name = std::string($2);
+		$$->code += ".[] " + $$->name + ", " + $4->name;
 	}else{
-		//if the type field of declaration node is not empty, then it is a declaration with assignment
-		//In that case, we need to generate a new temporary variable, therefore we use newTemp() as the third parameter
-		//and we also need to generate code for the assignment
-		strcpy($$->name, $2);
-		addSymbol($2, tempType, currentTable);
-		char tempCode[1024];
+		$$->name = std::string($2);
+		std::istringstream iss($6->code);
+		std::string token;
 		int count = 0;
-		char* token = strtok($6->code, " ");
-		while(token != nullptr){
-			sprintf(tempCode + strlen(tempCode), "[]= %s, %d, %s\n", $2, count, token);
+		while(iss >> token){
+			$$->code += "[]= " + $$->name + ", " + std::to_string(count) + ", " + token + "\n";
 			count++;
 		}
-		sprintf($$->code, ".[] %s, %d", $4, count); //declare the array
+		$$->code = ".[] " + $$->name + ", " + std::to_string(count+1) + "\n" + $$->code;
 	}
 };
 
@@ -480,35 +439,29 @@ declaration: {
 	$$ = nullptr
 }
 | ASSIGN expression{
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->code, $2->code);
-	strcpy($$->name, $2->name);
-	strcpy($$->type, $2->type);
+	$$ = $2;
 }
 ;
 
 datatype: INTEGER{
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->type, "int");
+	$$ = new CodeNode;
+	$$->type = "int";
 }
 | BOOLEAN{
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->type, "bool");
+	$$ = new CodeNode;
+	$$->type = "bool";
 }
 ;
 
 expression: math_expr{
-	$$ = new CodeNode;
-	strcpy($$->code, $1->code);
-	strcpy($$->name, $1->name);
-	strcpy($$->type, $1->type);
+	$$ = $1;
 }
 | ID L_PAREN parameter R_PAREN {
-	struct Bucket* funct = findSymbol($1, currentTable);
+	Bucket* funct = findSymbol(std::string($1), currentTable);
 	if(funct == nullptr){
 		yyerror("Undeclared function");
 	}
-	if(strcmp(funct->type, "function") != 0){
+	if(funct->type != "function"){
 		yyerror("Not a function");
 	}
 	/*******
@@ -516,45 +469,37 @@ expression: math_expr{
 	So a function table is optional
 	*******/
 	$$ = new CodeNode;
-	strcpy($$->name, newTemp());
-	strcpy($$->code, $3->code);
-	strcat($$->code, "\n");
-	strcat($$->code, "call ");
-	strcat($$->code, $1);
-	strcat($$->code, ", ");
-	strcat($$->code, $$->name);
+	$$->name = newTemp();
+	$$->code = $3->code + "\n" + "call " + std::string($1) + ", " + $$->name;
 } //function call
 | TRUE{
 	$$ = new CodeNode;
-	strcpy($$->name, "1");
-	strcpy($$->type, "bool");
+	$$->name = "1";
+	$$->type = "bool";
 }
 | FALSE{
 	$$ = new CodeNode;
-	strcpy($$->name, "0");
-	strcpy($$->type, "bool");
+	$$->name = "0";
+	$$->type = "bool";
 }
 | ID L_BRACK expression R_BRACK{
-	struct Bucket* array = findSymbol($1, currentTable);
+	Bucket* array = findSymbol(std::string($1), currentTable);
 	if(array == nullptr){
 		yyerror("Undeclared array");
 	}
-	if(strcmp(array->type, "array") != 0){
+	if(array->type != "array"){
 		yyerror("Not an array");
 	}
-	if(strcmp($3->type, "int") != 0){
+	if($3->type != "int"){
 		yyerror("Array index must be an integer");
 	}
 	$$ = new CodeNode;
-	strcpy($$->name, newTemp());
-	sprintf($$->code, "=[] %s, %s, %s", $$->name, $1 , $3->name);
-	strcpy($$->type, array->type);
+	$$->name = newTemp();
+	$$->type = "int";
+	$$->code = $3->code + "\n" + "=[] " + $$->name + ", " + std::string($1) + ", " + $3->name;
 } //array access
 | array {
-	$$ = new CodeNode;
-	strcpy($$->name, $1->name);
-	strcpy($$->code, $1->code);
-	strcpy($$->type, $1->type);
+	$$ = $1;
 }
 ;
 
@@ -563,138 +508,105 @@ math_expr: term addop math_expr
 ; 
 
 bool_expr: math_expr boolop math_expr{
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	if(strcmp($1->type, $3->type) != 0){
+	$$ = new CodeNode;
+	if($1->type != "int" || $3->type != "int"){
 		yyerror("type mismatch");
 	}
-	strcpy($$->name, newTemp());
-	strcpy($$->code, $1->code); //get the code for the first math_expr
-	strcat($$->code, "\n");
-	strcat($$->code, $3->code); //get the code for the second math_expr
-	strcat($$->code, "\n");
-	strcat($$->code, $2->name); //get the comparison operator from boolop, we store the comparison operator in the name field of the CodeNode
-	strcat($$->code, " ");
-	strcat($$->code, $$->name); //get the variable name for the result
-	strcat($$->code, ", ");
-	strcat($$->code, $1->name); //get the variable name from the first math_expr
-	strcat($$->code, ", ");
-	strcat($$->code, $3->name); //get the variable name from the second math_expr
-	strcat($$->code, "\n");
+	$$->name = newTemp();
+	$$->code = $1->code + "\n" + $3->code + "\n" + $2->name + " " + $$->name + ", " + $1->name + ", " + $3->name + "\n";
 }
 | TRUE{
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->type, "bool");
-	strcpy($$->name, "1");
+	$$ = new CodeNode;
+	$$->type = "bool";
+	$$->name = "1";
 }
 | FALSE{
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->type, "bool");
-	strcpy($$->name, "0");
+	$$ = new CodeNode;
+	$$->type = "bool";
+	$$->name = "0";
 }
 | ID{
-	struct Bucket* var = findSymbol($1, currentTable);
+	Bucket* var = findSymbol(std::string($1), currentTable);
 	if(var == nullptr){
 		yyerror("Undeclared variable");
 	}
-	if(strcmp(var->type, "bool") != 0){
-		yyerror("Type mismatch");
+	if(var->type != "bool"){
+		yyerror("Type mismatch! Boolean expected");
 	}
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->type, var->type);
-	strcpy($$->name, var->value);
+	$$ = new CodeNode;
+	$$->type = var->type;
+	$$->name = var->name;
 }
 | ID L_PAREN parameter R_PAREN {
-	struct Bucket* funct = findSymbol($1, currentTable);
+	Bucket* funct = findSymbol(std::string($1), currentTable);
 	if(funct == nullptr){
 		yyerror("Undeclared function");
 	}
-	if(strcmp(funct->type, "function") != 0){
+	if(funct->type != "function"){
 		yyerror("Type mismatch");
 	}
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
+	$$ = new CodeNode;
 	//here we are assuming that parameter will store a list of variable names containing the parameters in its code attribute
 	//separated by spaces. Therefore, we need to separate the parameters
-	strcpy($$->name, newTemp());
-	char temp[1024];
-	strcpy(temp, $3->code);
-	char* token = strtok(temp, " ");
-	while(token != nullptr){
-		strcpy($$->code, "param ");
-		strcat($$->code, token);
-		strcat($$->code, "\n");
-		token = strtok(nullptr, " ");
+	$$->name = newTemp();
+	std::istringstream iss($3->code);
+	std::string token;
+	while(iss >> token){
+		$$->code += "param " + token + "\n";
 	}
-	strcat($$->code, "call ");
-	strcat($$->code, $1);
-	strcat($$->code, ", ");
-	strcat($$->code, $$->name);
-	strcat($$->code, "\n");
+	$$->code += "call " + std::string($1) + ", " + $$->name + "\n";
 }
 ;
 
 boolop: EQUAL {
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->name, "==");
+	$$ = new CodeNode;
+	$$->name = "==";
 }
 | NE{
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->name, "!=");
+	$$ = new CodeNode;
+	$$->name = "!=";
 }
 | SE{
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->name, "<=");
+	$$ = new CodeNode;
+	$$->name = "<=";
 }
 | BE{
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->name, ">=");
+	$$ = new CodeNode;
+	$$->name = ">=";
 }
 | SMALLER{
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->name, "<");
+	$$ = new CodeNode;
+	$$->name = "<";
 }
 | BIGGER{
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->name, ">");
+	$$ = new CodeNode;
+	$$->name = ">";
 }
 ;
 
 
 //We store the additon/subtraction operator in the name field of the CodeNode
 addop : PLUS{
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->name, "+");
+	$$ = new CodeNode;
+	$$->name = "+";
 }
 | MINUS{
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->name, "-");
+	$$ = new CodeNode;
+	$$->name = "-";
 }
 ;
 
 term: term mulop factor{
-	if(strcmp($1->type, $3->type) != 0){
+	if($1->type != $3->type){
 		yyerror("Type mismatch");
 	}
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->type, $1->type);
-	strcpy($$->name, newTemp());
-	strcpy($$->code, $1->code);
-	strcat($$->code, "\n");
-	strcat($$->code, $3->code);
-	strcat($$->code, "\n");
-	strcat($$->code, $2->name); //get the multiplication/division operator from mulop, we store the operator in the name field of the CodeNode
-	strcat($$->code, " ");
-	strcat($$->code, $$->name); //get the variable name for the result
-	strcat($$->code, ", ");
-	strcat($$->code, $1->name); //get the variable name from the first term
-	strcat($$->code, ", ");
-	strcat($$->code, $3->name); //get the variable name from the second term
-	strcat($$->code, "\n");
+	$$ = new CodeNode;
+	$$->type = $1->type;
+	$$->name = newTemp();
+	$$->code = $1->code + "\n" + $3->code + "\n" + $2->name + " " + $$->name + ", " + $1->name + ", " + $3->name + "\n";
 }
 | factor{
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->type, $1->type);
-	strcpy($$->name, $1->name);
-	strcpy($$->code, $1->code);
+	$$ = $1;
 }
 ;
 
@@ -717,13 +629,13 @@ factor: L_PAREN math_expr R_PAREN{
 	$$->name = $1;
 }
 | ID{
-	struct Bucket* var = findSymbol($1, currentTable);
+	Bucket* var = findSymbol(std::string($1), currentTable);
 	if(var == nullptr){
 		yyerror("Undeclared variable");
 	}
 	$$ = new CodeNode;
-	strcpy($$->type, var->type);
-	strcpy($$->name, var->value);
+	$$->type = var->type;
+	$$->name = var->name;
 }
 ;
 
@@ -735,8 +647,7 @@ array: L_BRACE data data_ R_BRACE{ //All the data is stored in the code field of
 	$$->type = "array";
 	$$->code = $2->code;
 	if($3 != nullptr){
-		strcat($$->code, " ");
-		strcat($$->code, $3->code);
+		$$->code += " " + $3->code;
 	}
 };
 
@@ -746,7 +657,7 @@ data : NUMBER{
 	$$->code = $1;
 }
 | ID{
-	Bucket* var = findSymbol($1, currentTable);
+	Bucket* var = findSymbol(std::string($1), currentTable);
 	if(var == nullptr){
 		yyerror("Undeclared variable");
 	}
@@ -777,8 +688,8 @@ data_: {
 ;
 
 if_stmt : IF L_PAREN bool_expr R_PAREN L_BRACE EOL if_body EOL R_BRACE else_if_stmt else_stmt{
-	char* tempLabel1 = newLabel();
-	char* tempLabel2 = newLabel();
+	std::string tempLabel1 = newLabel();
+	std::string tempLabel2 = newLabel();
 	$$ = new CodeNode;
 	//We want to jump to the else if statement if the bool_expr is false
 	//so we need to invert the result of bool_expr
@@ -787,7 +698,6 @@ if_stmt : IF L_PAREN bool_expr R_PAREN L_BRACE EOL if_body EOL R_BRACE else_if_s
 	//go to the end of the if statement
     //generate a new label to go to if the bool_expr is false
 	$$->code += "?:= " + tempLabel1 + ", " + $3->name + "\n" + $7->code + "\n:= " + tempLabel2 + "\n:" + tempLabel1;
-	tempLabel = newLabel();
 	if($10 != nullptr){
 		changeLabel($10->code, tempLabel2); //change TEMPLABEL to go to the end of if statement
 		$$->code += "\n" + $10->code;
@@ -813,24 +723,19 @@ else_if_stmt: {
 	$$ = nullptr;
 }
 | ELSE_IF L_PAREN bool_expr R_PAREN L_BRACE EOL if_body EOL R_BRACE else_if_stmt{
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	string tempLabel1 = newLabel();
+	$$ = new CodeNode;
+	std::string tempLabel1 = newLabel();
 	$$->code = $3->code + "\n! " + $3->name + ", " + $3->name + "\n";
 	//We want to jump to the else if statement if the bool_expr is false, so we need to invert the result of bool_expr
 	$$->code += "?:=" + tempLabel1 + ", " + $3->name + "\n" + $7->code + "\n:=TEMPLABEL\n:" + tempLabel1;
-	if($10 != nullptr){
-		strcat($$->code, "\n");
-		changeLabel($10->code, "TEMPLABEL");
-		strcat($$->code, $10->code);
-	}
 }
 ;
 
 while_stmt : WHILE L_PAREN bool_expr R_PAREN L_BRACE EOL loop_body EOL R_BRACE{
 	$$ = new CodeNode;
-	string tempLabel1 = newLabel();
-	string tempLabel2 = newLabel();
-	$$->code = : + tempLabel1 + "\n" + $3->code + "\n" + "! " + $3->name + ", " + $3->name + "\n";
+	std::string tempLabel1 = newLabel();
+	std::string tempLabel2 = newLabel();
+	$$->code = ":" + tempLabel1 + "\n" + $3->code + "\n" + "! " + $3->name + ", " + $3->name + "\n";
 	//We want to jump to the end of the while statement if the bool_expr is false, so we need to invert the result of bool_expr
 	$$->code += "?:=" + tempLabel2 + ", " + $3->name + "\n";
 	//in case there is a break statement, we want to change the labels first
@@ -839,10 +744,9 @@ while_stmt : WHILE L_PAREN bool_expr R_PAREN L_BRACE EOL loop_body EOL R_BRACE{
 }
 ;
 
-//fuck type checking, not doing it
 arguments: datatype ID arguments_{
 	$$ = new CodeNode;
-	$$->code = ". " + $2;
+	$$->code = ". " + std::string($2);
 	if($3 != nullptr){
 		$$->code += "\n" + $3->code;
 	}
@@ -854,9 +758,9 @@ arguments_ :  {
 }
 | COMMA datatype ID arguments_{
 	$$ = new CodeNode;
-	$$->code = ". " + $3;
-	if($3 != nullptr){
-		$$->code += "\n" + $3->code;
+	$$->code = ". " + std::string($3);
+	if($4 != nullptr){
+		$$->code += "\n" + $4->code;
 	}
 }
 ;
@@ -870,13 +774,13 @@ parameter : {
 }
 | NUMBER parameter_ {
 	$$ = new CodeNode;
-	$$->code = "param " + $1;
+	$$->code = "param " + std::string($1);
 	if($2 != nullptr){
 		$$->code += "\n" + $2->code;
 	}
 }
 | ID parameter_ {
-	Bucket* var = findSymbol($1);
+	Bucket* var = findSymbol(std::string($1), currentTable);
 	if(var == nullptr){
 		yyerror("Undeclared variable");
 	}
@@ -893,13 +797,13 @@ parameter_ : {
 }
 | COMMA NUMBER parameter_ {
 	$$ = new CodeNode;
-	$$->code = "param " + $2;
+	$$->code = "param " + std::string($2);
 	if($3 != nullptr){
 		$$->code += "\n" + $3->code;
 	}
 }
 | COMMA ID parameter_ {
-	Bucket* var = findSymbol($2);
+	Bucket* var = findSymbol(std::string($2), currentTable);
 	if(var == nullptr){
 		yyerror("Undeclared variable");
 	}
@@ -918,7 +822,7 @@ void yyerror(const char *s) {
 	printf("error");
 };
 
-char* mycont(char* a, char* b){
+std::string mycont(char* a, char* b){
 
 	strcat(a,b);
 	return a;
@@ -926,13 +830,13 @@ char* mycont(char* a, char* b){
 
 int main(int argc, char **argv)
 {
-	int i = 0;
-	for(i = 0; i < 50; i++){
-		currentTable[i] = nullptr;
-	} //initialize symbol table
-	fp = fopen("output.cplt", "w");
+	fout.open("output.txt");
+	if(!fout.is_open()){
+		printf("Error opening file\n");
+		exit(1);
+	}
 	yyparse();
-	fclose(fp);
+	fout.close();
 	return 0;
 
 }

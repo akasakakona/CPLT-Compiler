@@ -29,7 +29,6 @@ L_BRACE \{
 R_BRACE \}
 L_BRACK \[
 R_BRACK \]
-STRING_LITERAL \"([^\"]|\\\")*\"
 
 EQUAL ==
 NE !=
@@ -88,7 +87,6 @@ EOL \n
 {MINUS} {printf("Minus\n"); return MINUS;}
 {ASSIGN} {printf("Assign\n"); return ASSIGN;}
 {COMMA} {printf("Comma\n"); return COMMA;}
-{STRING_LITERAL} {printf("STRING_LITERAL %s\n", yytext); return STRING_LITERAL;}
 {RETURN} {printf("Return\n"); return RETURN;}
 {OUT} {printf("Out\n"); return OUT;}
 {IN} {printf("In\n"); return IN;}
