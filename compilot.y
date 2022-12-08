@@ -10,7 +10,11 @@
 #include <stdio.h>
 #include <cstring>
 
-int yylex();
+extern "C" int yylex();
+extern int yyleng;
+extern FILE *yyin;
+extern char* yytext;
+
 void yyerror(const char *s);
 std::string mycont(std::string a, std::string b);
 
@@ -179,12 +183,13 @@ std::ofstream fout;
 %%
 
 result: function_defs program{
+	printf("	result\n");
 	if($1 != nullptr){
 		fout << $1->code << std::endl;
 		printf("%s\n", ($1->code).c_str());
 	}
-	fout << "func main" << std::endl << $2->code << std::endl << "endfunc" << std::endl;
-	printf("func main\n%s\nendfunc\n", ($2->code).c_str());
+	fout << "func main" << $2->code << std::endl << "endfunc" << std::endl;
+	printf("func main%s\nendfunc\n", ($2->code).c_str());
 }
 
 function_defs : {
@@ -223,6 +228,7 @@ function_def : FUNCTION ID L_PAREN {
 }
 
 program: stmt{
+	printf("	program\n");
 	$$ = new CodeNode;
 	$$->code = $1->code;
 }
@@ -239,7 +245,7 @@ stmt: {
 	$$ = nullptr;
 }
  | declaration_stmt {
-	printf(" declaration_stmt\n");
+	printf("	declaration_stmt\n");
 	$$ = $1;
 	}
  | ID L_PAREN parameter R_PAREN {
@@ -266,7 +272,7 @@ stmt: {
 	$$ = $1;
 	}
  | OUT L_PAREN expression R_PAREN {
-	printf(" out\n");
+	printf("	out\n");
 	$$ = new CodeNode;
 	$$->code = $3->code + "\n" + ".> " + $3->name;
 	}
@@ -400,11 +406,16 @@ assignment_stmt: ID ASSIGN expression{
 }
 
 declaration_stmt: datatype ID declaration{
+	printf("	val:%s\n", $3->name.c_str());
+	if(findSymbol(std::string($2), currentTable) != nullptr){
+		yyerror("redeclaration of variable");
+	}
 	$$ = new CodeNode;
 	addSymbol(std::string($2), $1->type, currentTable);
-	$$->code = $3->code + "\n. " + std::string($2);
 	if($3 != nullptr){
-		$$->code += "\n= " + std::string($2) + ", " + $3->name;
+		$$->code = $3->code + "\n. " + std::string($2) + "\n= " + std::string($2) + ", " + $3->name;
+	}else{
+		$$->code = ". " + std::string($2);
 	}
 }
 | datatype ID L_BRACK R_BRACK declaration{
@@ -468,6 +479,7 @@ declaration: {
 ;
 
 datatype: INTEGER{
+	printf("	integer\n");
 	$$ = new CodeNode;
 	$$->type = "int";
 }
@@ -478,7 +490,11 @@ datatype: INTEGER{
 ;
 
 expression: math_expr{
-	$$ = $1;
+	printf("	math_expr:%s", $$->name.c_str());
+	$$ = new CodeNode;
+	$$->name = $1->name;
+	$$->type = $1->type;
+	$$->code = $1->code;
 }
 | ID L_PAREN parameter R_PAREN {
 	Bucket* funct = findSymbol(std::string($1), currentTable);
@@ -538,7 +554,11 @@ math_expr: term addop math_expr{
 	$$->type = "int";
 }
 | term {
-	$$ = $1;
+	printf("	term");
+	$$ = new CodeNode;
+	$$->name = $1->name;
+	$$->code = $1->code;
+	$$->type = $1->type;
 }
 ; 
 
@@ -642,7 +662,11 @@ term: term mulop factor{
 	$$->code = $1->code + "\n" + $3->code + "\n" + $2->name + " " + $$->name + ", " + $1->name + ", " + $3->name + "\n";
 }
 | factor{
-	$$ = $1;
+	printf("	factor: %s", $1->name.c_str());
+	$$ = new CodeNode;
+	$$->type = $1->type;
+	$$->name = $1->name;
+	$$->code = $1->code;
 }
 ;
 
@@ -660,9 +684,10 @@ factor: L_PAREN math_expr R_PAREN{
 	$$ = $2;
 }
 | NUMBER{
+	printf("	NUMBER: %s", $1);
 	$$ = new CodeNode;
 	$$->type = "int";
-	$$->name = $1;
+	$$->name = std::string($1);
 }
 | ID{
 	Bucket* var = findSymbol(std::string($1), currentTable);
@@ -690,7 +715,7 @@ array: L_BRACE data data_ R_BRACE{ //All the data is stored in the code field of
 data : NUMBER{
 	$$ = new CodeNode;
 	$$->type = "int";
-	$$->code = $1;
+	$$->code = std::string($1);
 }
 | ID{
 	Bucket* var = findSymbol(std::string($1), currentTable);
@@ -866,6 +891,13 @@ int main(int argc, char **argv)
 	if(!fout.is_open()){
 		printf("Error opening file\n");
 		exit(1);
+	}
+	++argv, --argc; /* skip over program name */
+	if(argc > 0){
+		yyin = fopen(argv[0], "r");
+	}
+	else{
+		yyin = stdin;
 	}
 	yyparse();
 	fout.close();

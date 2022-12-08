@@ -1,7 +1,7 @@
 %{
 	#include<stdio.h>
 	#include<stdlib.h>
-    int yylex();
+    extern "C" int yylex();
 	#include "y.tab.h"
     void yyerror(const char *s);
 	int num = 0;
@@ -97,10 +97,9 @@ EOL \n
 */
 %}
 
-{ID} {printf("ID %s\n", yytext); return ID;}
-{NUMBER}	{printf("NUMBER %d\n", atoi(yytext)); return NUMBER;}
+{ID} {yylval.string = strdup(yytext);printf("ID %s\n", yytext); return ID;}
+{NUMBER}	{yylval.string = strdup(yytext);printf("NUMBER %d\n", atoi(yytext)); return NUMBER;}
 {DIGIT}*{ID}	{printf("Error %s", yytext); return 1;}
 .		{printf("Error %s", yytext); return 1;}
 
 %%
-int yywrap(void) {return 1;}
