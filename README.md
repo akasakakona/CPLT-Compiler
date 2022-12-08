@@ -1,3 +1,21 @@
+# Language Features
+- [x] Integer scale variables
+```bash
+itg x
+itg y
+itg sum
+```
+- [x] 1-D array of integers 
+- [x] Assignment statements
+- [x] Arithmetic operators
+- [x] Relational operators
+- [x] While or do-while loops
+- [x] Break statement
+- [x] If-then-else statements
+- [x] Read and write statements
+- [x] Comments
+- [x] Function
+
 # Code Generator
 
 This part of the project translates parsed code into intermediate representation (IR), so that we can further translate it into assembly language later on.
