@@ -90,9 +90,12 @@ EOL \n
 {RETURN} {printf("Return\n"); return RETURN;}
 {OUT} {printf("Out\n"); return OUT;}
 {IN} {printf("In\n"); return IN;}
+%{/*
 {AND} {printf("And\n"); return AND;}
 {OR} {printf("Or\n"); return OR;}
 {NOT} {printf("Not\n"); return NOT;}
+*/
+%}
 
 {ID} {printf("ID %s\n", yytext); return ID;}
 {NUMBER}	{printf("NUMBER %d\n", atoi(yytext)); return NUMBER;}
