@@ -307,7 +307,7 @@ stmt: {
 //FIXME: needs to be completed
  function_body:declaration_stmt {
  	$$ = new CodeNode;
-	$$->code = $1->code + "\n"
+	$$->code = $1->code + "\n";
  }
  | assignment_stmt {
 	$$ = new CodeNode;
@@ -508,13 +508,13 @@ math_expr: term addop math_expr {
 	if($1->type != "int" && $3->type != "int"){
 		yyerror("type mismatch");
 	}
-	$$->name = newTemp();
+	//$$->name = newTemp();
 	$$->code = $1->code + " " + $2->name + " " + $3->code + "\n";
 	if ($2->name == "+") {
-		$$ = $1 + $3; 
+		//maybe add .val field for computation 
 	}
 	else if ($2->name == "-") {
-		$$ = $1 - $3; 
+		//same here
 	}
 }
 | term {
