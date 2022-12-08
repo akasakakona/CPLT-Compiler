@@ -5,7 +5,7 @@ itg fnc mult(itg a, itg b) {
     b = a - 1
     itg c[] = {2, 3, 4}
     itg d
-    whl d < 30 {
+    whl (d < 30) {
         d = mult(a, b)
     }
     out(d)
