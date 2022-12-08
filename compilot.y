@@ -277,8 +277,13 @@ stmt: {
 	$$->code = $3->code + "\n" + ".> " + $3->name;
 	}
  | IN L_PAREN ID R_PAREN {
-	printf(" in\n");
- }
+	printf("	in\n");
+	if(findSymbol(std::string($3), currentTable) == nullptr){
+		yyerror("Variable not declared");
+	}
+	$$ = new CodeNode;
+	$$->code = ".< " + std::string($3);
+	}
  | COMMENT {printf(" comment\n");}
  ;
 
@@ -310,6 +315,19 @@ stmt: {
 	$$ = $1;
 	}
  | COMMENT {printf(" comment\n");}
+ | OUT L_PAREN expression R_PAREN {
+	printf("	out\n");
+	$$ = new CodeNode;
+	$$->code = $3->code + "\n" + ".> " + $3->name;
+	}
+ | IN L_PAREN ID R_PAREN {
+	printf("	in\n");
+	if(findSymbol(std::string($3), currentTable) == nullptr){
+		yyerror("Variable not declared");
+	}
+	$$ = new CodeNode;
+	$$->code = ".< " + std::string($3);
+	}
  ;
 
 //FIXME: needs to be completed
@@ -345,6 +363,19 @@ stmt: {
  | COMMENT{
 	$$ = nullptr;
  }
+ | OUT L_PAREN expression R_PAREN {
+	printf("	out\n");
+	$$ = new CodeNode;
+	$$->code = $3->code + "\n" + ".> " + $3->name;
+	}
+ | IN L_PAREN ID R_PAREN {
+	printf("	in\n");
+	if(findSymbol(std::string($3), currentTable) == nullptr){
+		yyerror("Variable not declared");
+	}
+	$$ = new CodeNode;
+	$$->code = ".< " + std::string($3);
+	}
  ;
 
 //FIXME: needs to be completed
@@ -375,6 +406,19 @@ stmt: {
 	printf("break");
 	$$ = new CodeNode;
 	$$->code = ":=TEMPLABEL";
+	}
+ | OUT L_PAREN expression R_PAREN {
+	printf("	out\n");
+	$$ = new CodeNode;
+	$$->code = $3->code + "\n" + ".> " + $3->name;
+	}
+ | IN L_PAREN ID R_PAREN {
+	printf("	in\n");
+	if(findSymbol(std::string($3), currentTable) == nullptr){
+		yyerror("Variable not declared");
+	}
+	$$ = new CodeNode;
+	$$->code = ".< " + std::string($3);
 	}
  ;
 
@@ -748,7 +792,7 @@ data_: {
 }
 ;
 
-if_stmt : IF L_PAREN bool_expr R_PAREN L_BRACE EOL if_body EOL R_BRACE else_if_stmt else_stmt{
+if_stmt: IF L_PAREN bool_expr R_PAREN L_BRACE EOL if_body EOL R_BRACE else_if_stmt else_stmt{
 	std::string tempLabel1 = newLabel();
 	std::string tempLabel2 = newLabel();
 	$$ = new CodeNode;
