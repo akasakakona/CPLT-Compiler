@@ -179,8 +179,12 @@ std::ofstream fout;
 %%
 
 result: function_defs EOL program{
-	fout << $1->code << std::endl << "func main" << std::endl << $3->code << std::endl << "endfunc" << std::endl;
-	printf("%s\nfunc main\n%s\nendfunc\n", ($1->code).c_str(), ($3->code).c_str());
+	if($1 != nullptr){
+		fout << $1->code << std::endl;
+		printf("%s\n", ($1->code).c_str());
+	}
+	fout << "func main" << std::endl << $3->code << std::endl << "endfunc" << std::endl;
+	printf("func main\n%s\nendfunc\n", ($3->code).c_str());
 }
 
 function_defs : {
