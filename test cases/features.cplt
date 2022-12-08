@@ -1,15 +1,11 @@
 itg fnc mult(itg a, itg b) {
-    ret a * b
-}
-
-itg fnc main () {
     itg a
     itg b
     a = 1 + 2
     b = a - 1
     itg c[] = {2, 3, 4}
     itg d
-    whl d < 30 {
+    whl (d < 30) {
         d = mult(a, b)
     }
     out(d)
@@ -21,5 +17,5 @@ itg fnc main () {
         out("a is smaller than b")
     } 
     
-    ret 0 
+    ret a * b
  }

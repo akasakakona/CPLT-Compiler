@@ -1,8 +1,4 @@
-itg fnc mult(itg a, itg b) {
-    ret a * b
-}
-
-itg fnc main () {
+itg fnc mult() {
     itg a
     a = 1 + 2
     b = a - 1
@@ -22,7 +18,7 @@ itg fnc main () {
         out("a is smaller than b")
     } 
     
-    ret 0 
+    ret a * b
  }
  
 @@

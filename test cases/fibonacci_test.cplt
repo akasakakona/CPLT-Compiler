@@ -1,26 +1,22 @@
-itg fnc main () {
-    itg f[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-    itg n
+itg f[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+itg n
 
-    in(n)
+in(n)
      
-    itg i
-    itg i = 2
+itg i
+itg i = 2
  
-    f[0] = 0
-    f[1] = 1
+f[0] = 0
+f[1] = 1
  
-    whl i <= n { 
-       f[i] = f[i - 1] + f[i - 2]
-       i = i + 1
-    }
-    
-    itg fib
-    fib = f[n]
-    out(fib)
-  
-    ret 0
+whl (i <= n) { 
+    f[i] = f[i - 1] + f[i - 2]
+    i = i + 1
 }
+    
+itg fib
+fib = f[n]
+out(fib)
 
 @@
 array goes up to 10
