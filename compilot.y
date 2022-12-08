@@ -153,7 +153,7 @@ std::ofstream fout;
 %token PLUS MINUS MULT DIV
 %token ASSIGN
 %token EOL
-%token END
+//%token END
 %token INTEGER
 %token BOOLEAN
 %token COMMA
@@ -177,9 +177,9 @@ std::ofstream fout;
 %token COMMENT
 %token OUT
 %token IN
-%token AND
-%token OR
-%token NOT
+//%token AND
+//%token OR
+//%token NOT
 
 %type <node> function_defs function_def program stmt arguments
 %type <node> function_body
