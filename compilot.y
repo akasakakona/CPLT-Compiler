@@ -188,8 +188,8 @@ result: function_defs program{
 		fout << $1->code << std::endl;
 		printf("%s\n", ($1->code).c_str());
 	}
-	fout << "func main" << $2->code << std::endl << "endfunc" << std::endl;
-	printf("func main%s\nendfunc\n", ($2->code).c_str());
+	fout << "func main" << std::endl << $2->code << std::endl << "endfunc" << std::endl;
+	printf("func main\n%s\nendfunc\n", ($2->code).c_str());
 }
 
 function_defs : {
@@ -229,12 +229,13 @@ function_def : FUNCTION ID L_PAREN {
 
 program: stmt{
 	printf("	program\n");
-	$$ = new CodeNode;
-	$$->code = $1->code;
+	$$ = $1;
 }
 | program EOL stmt{
 	$$ = new CodeNode;
-	$$->code = $1->code;
+	if($1->code != ""){
+		$$->code = $1->code;
+	}
 	if($3 != nullptr){
 		$$->code += "\n" + $3->code;
 	}
@@ -271,10 +272,13 @@ stmt: {
 	printf(" assignment_stmt\n");
 	$$ = $1;
 	}
- | OUT L_PAREN expression R_PAREN {
+ | OUT L_PAREN ID R_PAREN {
 	printf("	out\n");
+	if(findSymbol(std::string($3), currentTable) == nullptr){
+		yyerror("Variable not declared");
+	}
 	$$ = new CodeNode;
-	$$->code = $3->code + "\n" + ".> " + $3->name;
+	$$->code = ".> " + std::string($3);
 	}
  | IN L_PAREN ID R_PAREN {
 	printf("	in\n");
@@ -315,10 +319,13 @@ stmt: {
 	$$ = $1;
 	}
  | COMMENT {printf(" comment\n");}
- | OUT L_PAREN expression R_PAREN {
+ | OUT L_PAREN ID R_PAREN {
 	printf("	out\n");
+	if(findSymbol(std::string($3), currentTable) == nullptr){
+		yyerror("Variable not declared");
+	}
 	$$ = new CodeNode;
-	$$->code = $3->code + "\n" + ".> " + $3->name;
+	$$->code = ".> " + std::string($3);
 	}
  | IN L_PAREN ID R_PAREN {
 	printf("	in\n");
@@ -363,10 +370,13 @@ stmt: {
  | COMMENT{
 	$$ = nullptr;
  }
- | OUT L_PAREN expression R_PAREN {
+ | OUT L_PAREN ID R_PAREN {
 	printf("	out\n");
+	if(findSymbol(std::string($3), currentTable) == nullptr){
+		yyerror("Variable not declared");
+	}
 	$$ = new CodeNode;
-	$$->code = $3->code + "\n" + ".> " + $3->name;
+	$$->code = ".> " + std::string($3);
 	}
  | IN L_PAREN ID R_PAREN {
 	printf("	in\n");
@@ -405,12 +415,15 @@ stmt: {
  | BREAK {
 	printf("break");
 	$$ = new CodeNode;
-	$$->code = ":=TEMPLABEL";
+	$$->code = ":= TEMPLABEL";
 	}
- | OUT L_PAREN expression R_PAREN {
+ | OUT L_PAREN ID R_PAREN {
 	printf("	out\n");
+	if(findSymbol(std::string($3), currentTable) == nullptr){
+		yyerror("Variable not declared");
+	}
 	$$ = new CodeNode;
-	$$->code = $3->code + "\n" + ".> " + $3->name;
+	$$->code = ".> " + std::string($3);
 	}
  | IN L_PAREN ID R_PAREN {
 	printf("	in\n");
@@ -457,7 +470,10 @@ declaration_stmt: datatype ID declaration{
 	$$ = new CodeNode;
 	addSymbol(std::string($2), $1->type, currentTable);
 	if($3 != nullptr){
-		$$->code = $3->code + "\n. " + std::string($2) + "\n= " + std::string($2) + ", " + $3->name;
+		if($1->code != ""){
+			$$->code = $3->code + "\n";
+		}
+		$$->code += ". " + std::string($2) + "\n= " + std::string($2) + ", " + $3->name;
 	}else{
 		$$->code = ". " + std::string($2);
 	}
@@ -554,7 +570,8 @@ expression: math_expr{
 	*******/
 	$$ = new CodeNode;
 	$$->name = newTemp();
-	$$->code = $3->code + "\n" + "call " + std::string($1) + ", " + $$->name;
+	$$->code = ". " + $$->name + "\n";
+	$$->code += $3->code + "\n" + "call " + std::string($1) + ", " + $$->name;
 } //function call
 | TRUE{
 	$$ = new CodeNode;
@@ -579,8 +596,12 @@ expression: math_expr{
 	}
 	$$ = new CodeNode;
 	$$->name = newTemp();
+	$$->code = ". " + $$->name + "\n";
 	$$->type = "int";
-	$$->code = $3->code + "\n" + "=[] " + $$->name + ", " + std::string($1) + ", " + $3->name;
+	if($3->code != ""){
+		$$->code += $3->code + "\n";
+	}
+	$$->code += "=[] " + $$->name + ", " + std::string($1) + ", " + $3->name;
 } //array access
 | array {
 	$$ = $1;
@@ -600,9 +621,7 @@ math_expr: term addop math_expr{
 | term {
 	printf("	term");
 	$$ = new CodeNode;
-	$$->name = $1->name;
-	$$->code = $1->code;
-	$$->type = $1->type;
+	$$ = $1;
 }
 ; 
 
@@ -612,7 +631,14 @@ bool_expr: math_expr boolop math_expr{
 		yyerror("type mismatch");
 	}
 	$$->name = newTemp();
-	$$->code = $1->code + "\n" + $3->code + "\n" + $2->name + " " + $$->name + ", " + $1->name + ", " + $3->name + "\n";
+	$$->code = ". " + $$->name + "\n";
+	if($1->code != ""){
+		$$->code += $1->code + "\n";
+	}
+	if($3->code != ""){
+		$$->code += $3->code + "\n";
+	}
+	$$->code += $2->name + " " + $$->name + ", " + $1->name + ", " + $3->name;
 	
 }
 | TRUE{
@@ -708,9 +734,7 @@ term: term mulop factor{
 | factor{
 	printf("	factor: %s", $1->name.c_str());
 	$$ = new CodeNode;
-	$$->type = $1->type;
-	$$->name = $1->name;
-	$$->code = $1->code;
+	$$ = $1;
 }
 ;
 
@@ -798,11 +822,14 @@ if_stmt: IF L_PAREN bool_expr R_PAREN L_BRACE EOL if_body EOL R_BRACE else_if_st
 	$$ = new CodeNode;
 	//We want to jump to the else if statement if the bool_expr is false
 	//so we need to invert the result of bool_expr
-	$$->code = $3->code + "\n! " + $3->name + ", " + $3->name + "\n";
+	if($3->code != ""){
+		$$->code += $3->code + "\n";
+	}
+	$$->code += "! " + $3->name + ", " + $3->name + "\n";
 	//finish running program
 	//go to the end of the if statement
     //generate a new label to go to if the bool_expr is false
-	$$->code += "?:= " + tempLabel1 + ", " + $3->name + "\n" + $7->code + "\n:= " + tempLabel2 + "\n:" + tempLabel1;
+	$$->code += "?:= " + tempLabel1 + ", " + $3->name + "\n" + $7->code + "\n:= " + tempLabel2 + "\n: " + tempLabel1;
 	if($10 != nullptr){
 		changeLabel($10->code, tempLabel2); //change TEMPLABEL to go to the end of if statement
 		$$->code += "\n" + $10->code;
@@ -814,7 +841,7 @@ if_stmt: IF L_PAREN bool_expr R_PAREN L_BRACE EOL if_body EOL R_BRACE else_if_st
 		//therefore, no need to change the label
 		$$->code += "\n" + $11->code;
 	}
-	$$->code += "\n:" + tempLabel2; //set the end of the if statement
+	$$->code += "\n: " + tempLabel2; //set the end of the if statement
 };
 
 else_stmt :{
@@ -832,7 +859,7 @@ else_if_stmt: {
 	std::string tempLabel1 = newLabel();
 	$$->code = $3->code + "\n! " + $3->name + ", " + $3->name + "\n";
 	//We want to jump to the else if statement if the bool_expr is false, so we need to invert the result of bool_expr
-	$$->code += "?:=" + tempLabel1 + ", " + $3->name + "\n" + $7->code + "\n:=TEMPLABEL\n:" + tempLabel1;
+	$$->code += "?:= " + tempLabel1 + ", " + $3->name + "\n" + $7->code + "\n:= TEMPLABEL\n: " + tempLabel1;
 }
 ;
 
@@ -840,12 +867,12 @@ while_stmt : WHILE L_PAREN bool_expr R_PAREN L_BRACE EOL loop_body EOL R_BRACE{
 	$$ = new CodeNode;
 	std::string tempLabel1 = newLabel();
 	std::string tempLabel2 = newLabel();
-	$$->code = ":" + tempLabel1 + "\n" + $3->code + "\n" + "! " + $3->name + ", " + $3->name + "\n";
+	$$->code = ": " + tempLabel1 + "\n" + $3->code + "\n" + "! " + $3->name + ", " + $3->name + "\n";
 	//We want to jump to the end of the while statement if the bool_expr is false, so we need to invert the result of bool_expr
-	$$->code += "?:=" + tempLabel2 + ", " + $3->name + "\n";
+	$$->code += "?:= " + tempLabel2 + ", " + $3->name + "\n";
 	//in case there is a break statement, we want to change the labels first
 	changeLabel($7->code, tempLabel2);
-	$$->code += $7->code + "\n" + ":=" + tempLabel1 + "\n:" + tempLabel2;
+	$$->code += $7->code + "\n" + ":= " + tempLabel1 + "\n: " + tempLabel2;
 }
 ;
 

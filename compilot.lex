@@ -38,7 +38,6 @@ SMALLER <
 BIGGER >
 TRUE true
 FALSE false
-
 PLUS [+]
 MULT [*]
 DIV [/]
@@ -55,7 +54,7 @@ EOL \n
 
 [ \t]+	{}
 {COMMENT} {printf("Comment\n"); return COMMENT;}
-{EOL}	{printf("EOL"); return EOL;}
+{EOL}	{printf("EOL\n"); return EOL;}
 {INTEGER} {printf("Integer\n"); return INTEGER;}
 {FUNCTION} {printf("Function\n"); return FUNCTION;}
 {BOOLEAN} {printf("Boolean\n"); return BOOLEAN;}
