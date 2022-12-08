@@ -152,7 +152,7 @@ if(!fout.is_open()){
 	CodeNode* node;
 }
 /* declare tokens */
-%token NUMBER
+%token <str> NUMBER
 %token PLUS MINUS MULT DIV
 %token ASSIGN
 %token EOL
@@ -172,7 +172,7 @@ if(!fout.is_open()){
 %token R_BRACE
 %token L_BRACK
 %token R_BRACK
-%token ID
+%token <str> ID
 %token EQUAL NE SE BE SMALLER BIGGER
 %token FUNCTION
 %token TRUE
@@ -184,31 +184,32 @@ if(!fout.is_open()){
 %token OR
 %token NOT
 
-%type <node> function_defs function_def program stmt
-%type <node> arguments function_body
+%type <node> function_defs function_def program stmt arguments
+%type <node> function_body
 %type <node> declaration_stmt parameter if_stmt while_stmt assignment_stmt
 %type <node> expression loop_body assignment declaration data_ else_stmt else_if_stmt
-%type <node> parameter_
-%type <node> datatype bool_expr math_expr boolop term addop mulop factor
+%type <node> parameter_ if_body data arguments_ array 
+%type <node> datatype bool_expr math_expr boolop term addop mulop factor result
 
 %%
-result: function_defs program{
-	fout << $1->code << endl << "func main" << endl << $2->code << endl << "endfunc" << endl;
-	printf("%s\nfunc main\n%s\nendfunc\n", $1->code, $2->code);
+
+result: function_defs EOL program{
+	fout << $1->code << endl << "func main" << endl << $3->code << endl << "endfunc" << endl;
+	printf("%s\nfunc main\n%s\nendfunc\n", $1->code, $3->code);
 }
 
-function_defs : function_defs function_def{
+function_defs : {
+	$$ = nullptr;
+}
+| function_def EOL function_defs{
 	$$ = new CodeNode;
 	if($1 != nullptr){
 		$$->code = $1->code + "\n";
 	}
-	$$->code += $2->code;
+	$$->code += $3->code;
 }
 
-function_def : {
-	$$ = nullptr;
-}
-| FUNCTION ID L_PAREN {
+function_def : FUNCTION ID L_PAREN {
 	printf("function\n");
 	if(findSymbol($2, currentTable) != nullptr){
 		yyerror("ID already declared");
@@ -221,11 +222,11 @@ function_def : {
 	currentTableIndex++;
 	symbolTable.push_back(vector<Bucket*>(50, nullptr));
 	currentTable = symbolTable.at(currentTableIndex);
-	$$ = new CodeNode;
-	$$->code = "func " + $2 + "\n";
+	$<node>$ = new CodeNode;
+	$<node>$code = "func " + $2 + "\n";
 }arguments R_PAREN L_BRACE EOL function_body EOL R_BRACE EOL {
 	printf("function\n"); 
-	$$->code += $4->code + $8->code + "endfunc";
+	$$->code += $<node>1code + $5->code + "endfunc";
 	//exiting the scope. Therefore deleting the symbol table
 	symbolTable.pop_back();
 	currentTableIndex--;
@@ -245,7 +246,9 @@ program: stmt{
 }
 ;
 
-stmt: 
+stmt: {
+	$$ = nullptr;
+}
  | declaration_stmt {
 	printf(" declaration_stmt\n");
 	$$ = $1;
@@ -279,7 +282,9 @@ stmt:
  | COMMENT {printf(" comment\n");}
  ;
 
- if_body: 
+ if_body: {
+	yyerror("if body cannot be empty");
+ }
  | declaration_stmt {
 	printf(" declaration_stmt\n");
 	$$ = $1;
@@ -314,17 +319,28 @@ stmt:
  | assignment_stmt
  | if_stmt
  | while_stmt
- | RETURN expression {printf(" return\n");}
- | RETURN
+ | RETURN expression {
+	printf(" return\n");
+	$$ = new CodeNode;
+	$$->code = $2->code + "\n" + "ret " + $2->code;
+	}
+ | RETURN{
+	$$ = new CodeNode;
+	$$->code = "ret";
+	}
  | ID L_PAREN parameter R_PAREN {printf(" function_call\n");}
- | COMMENT
+ | COMMENT{
+	$$ = nullptr;
+ }
  ;
 
  loop_body: declaration_stmt
  | assignment_stmt
  | if_stmt
  | while_stmt
- | COMMENT
+ | COMMENT{
+	$$ = nullptr;
+ }
  | ID L_PAREN parameter R_PAREN {printf(" function_call\n");}
  | BREAK {
 	printf("break");
@@ -414,12 +430,12 @@ declaration_stmt: datatype ID declaration{
 		char* token = strtok($5->code, " ");
 		//generate the code that assigns the value to the array
 		while(token != nullptr){
-			sprintf(tempCode + strlen(tempCode), "[]= %s, %d, %s\n", $4, count, token);
+			sprintf(tempCode + strlen(tempCode), "[]= %s, %d, %s\n", $2, count, token);
 			count++;
 		}
 		tempCode[strlen(tempCode) - 1] = '\0';
 		memset($5->code, 0, sizeof($5->code));
-		sprintf($5->code, ".[] %s, %d", $4, count); //declare the array
+		sprintf($5->code, ".[] %s, %d", $2, count); //declare the array
 		if(strlen($5->code) + strlen(tempCode) < 1023){ 
 			//check if the code generated is too long
 			strcat($5->code, tempCode);
@@ -451,20 +467,12 @@ declaration_stmt: datatype ID declaration{
 		addSymbol($2, tempType, currentTable);
 		char tempCode[1024];
 		int count = 0;
-		char* token = strtok($5->code, " ");
+		char* token = strtok($6->code, " ");
 		while(token != nullptr){
-			sprintf(tempCode + strlen(tempCode), "[]= %s, %d, %s\n", $4, count, token);
+			sprintf(tempCode + strlen(tempCode), "[]= %s, %d, %s\n", $2, count, token);
 			count++;
 		}
-		tempCode[strlen(tempCode) - 1] = '\0';
-		memset($5->code, 0, sizeof($5->code));
-		sprintf($5->code, ".[] %s, %d", $4, count); //declare the array
-		if(strlen($5->code) + strlen(tempCode) < 1023){ 
-			//check if the code generated is too long
-			strcat($5->code, tempCode);
-		}else{
-			yyerror("Code too long! Buffer overflow!");
-		}
+		sprintf($$->code, ".[] %s, %d", $4, count); //declare the array
 	}
 };
 
@@ -841,10 +849,12 @@ arguments: datatype ID arguments_{
 }
 ;
 
-arguments_ :  
+arguments_ :  {
+	$$ = nullptr;
+}
 | COMMA datatype ID arguments_{
 	$$ = new CodeNode;
-	$$->code = ". " + $2;
+	$$->code = ". " + $3;
 	if($3 != nullptr){
 		$$->code += "\n" + $3->code;
 	}
