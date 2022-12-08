@@ -187,7 +187,7 @@ if(!fout.is_open()){
 %type <node> function_defs function_def program stmt arguments
 %type <node> function_body
 %type <node> declaration_stmt parameter if_stmt while_stmt assignment_stmt
-%type <node> expression loop_body assignment declaration data_ else_stmt else_if_stmt
+%type <node> expression loop_body declaration data_ else_stmt else_if_stmt
 %type <node> parameter_ if_body data arguments_ array 
 %type <node> datatype bool_expr math_expr boolop term addop mulop factor result
 
@@ -226,7 +226,7 @@ function_def : FUNCTION ID L_PAREN {
 	$<node>$code = "func " + $2 + "\n";
 }arguments R_PAREN L_BRACE EOL function_body EOL R_BRACE EOL {
 	printf("function\n"); 
-	$$->code += $<node>1code + $5->code + "endfunc";
+	$$->code += $<node>4->code + $<node>8->code + "endfunc";
 	//exiting the scope. Therefore deleting the symbol table
 	symbolTable.pop_back();
 	currentTableIndex--;
@@ -350,7 +350,7 @@ stmt: {
  ;
 
 
-assignment_stmt: ID ASSIGN assignment{
+assignment_stmt: ID ASSIGN expression{
 	$$ = new CodeNode;
 	Bucket* var = findSymbol($1, currentTable);
 	if(var == nullptr){
@@ -365,7 +365,7 @@ assignment_stmt: ID ASSIGN assignment{
 	// strcat($$->code, ", ");
 	// strcat($$->code, $3->name);
 }
-| ID L_BRACK expression R_BRACK ASSIGN assignment{
+| ID L_BRACK expression R_BRACK ASSIGN expression{
 	$$ = new CodeNode;
 	Bucket* var = findSymbol($1, currentTable);
 	if(var == nullptr){
@@ -389,20 +389,6 @@ assignment_stmt: ID ASSIGN assignment{
 	strcat($$->code, $6->name);
 }
 
-assignment: expression{
-	$$ = new CodeNode;
-	strcpy($$->code, $1->code);
-	strcpy($$->name, $1->name);
-	strcpy($$->type, $1->type);
-}
-| array{
-	$$ = new CodeNode;
-	strcpy($$->code, $1->code);
-	strcpy($$->name, $1->name);
-	strcpy($$->type, $1->type);
-}
-;
-
 declaration_stmt: datatype ID declaration{
 	$$ = new CodeNode;
 	strcpy($$->code, $3->code);
@@ -412,7 +398,7 @@ declaration_stmt: datatype ID declaration{
 		yyerror("Declaration without assignment is not allowed");
 	}
 }
-| INTEGER ID L_BRACK R_BRACK declaration{
+| datatype ID L_BRACK R_BRACK declaration{
 	if(findSymbol($2, currentTable) != nullptr){
 		yyerror("redeclaration of variable");
 	}
@@ -444,7 +430,7 @@ declaration_stmt: datatype ID declaration{
 		}
 	}
 }
-| INTEGER ID L_BRACK expression R_BRACK declaration{
+| datatype ID L_BRACK expression R_BRACK declaration{
 	if(findSymbol($2, currentTable) != nullptr){
 		yyerror("redeclaration of variable");
 	}
@@ -480,10 +466,7 @@ declaration: {
 	$$ = nullptr
 }
 | ASSIGN expression{
-	$$ = (*CodeNode)malloc(sizeof(struct CodeNode));
-	strcpy($$->code, $2->code);
-	strcpy($$->name, $2->name);
-	strcpy($$->type, $2->type);
+	$$ = $2;
 }
 ;
 
