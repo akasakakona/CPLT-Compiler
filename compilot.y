@@ -523,6 +523,7 @@ bool_expr: math_expr boolop math_expr{
 	}
 	$$->name = newTemp();
 	$$->code = $1->code + "\n" + $3->code + "\n" + $2->name + " " + $$->name + ", " + $1->name + ", " + $3->name + "\n";
+	
 }
 | TRUE{
 	$$ = new CodeNode;
