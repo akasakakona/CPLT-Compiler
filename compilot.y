@@ -383,8 +383,8 @@ declaration_stmt: datatype ID declaration{
 		$$->code += "\n= " + std::string($2) + ", " + $3->name;
 	}
 }
-| INTEGER ID L_BRACK R_BRACK declaration{
-	if(findSymbol($2, currentTable) != nullptr){
+| datatype ID L_BRACK R_BRACK declaration{
+	if(findSymbol(std::string($2), currentTable) != nullptr){
 		yyerror("redeclaration of variable");
 	}
 	$$ = new CodeNode;
@@ -404,19 +404,12 @@ declaration_stmt: datatype ID declaration{
 			$$->code += "[]= " + std::string($2) + ", " + std::to_string(count) + ", " + token + "\n";
 			count++;
 		}
-		tempCode[strlen(tempCode) - 1] = '\0';
-		memset($5->code, 0, sizeof($5->code));
-		sprintf($5->code, ".[] %s, %d", $2, count); //declare the array
-		if(strlen($5->code) + strlen(tempCode) < 1023){ 
-			//check if the code generated is too long
-			strcat($5->code, tempCode);
-		}else{
-			yyerror("Code too long! Buffer overflow!");
-		}
+		$$->code = ".[] " + std::string($2) + ", " + std::to_string(count+1) + "\n" + $$->code;
+
 	}
 }
-| INTEGER ID L_BRACK expression R_BRACK declaration{
-	if(findSymbol($2, currentTable) != nullptr){
+| datatype ID L_BRACK expression R_BRACK declaration{
+	if(findSymbol(std::string($2), currentTable) != nullptr){
 		yyerror("redeclaration of variable");
 	}
 	if($4->type != "int"){
