@@ -7,7 +7,7 @@ itg fnc mult() {
     itg d
     d = c + a
     whl (d < 30) {
-        d = a * b
+        d = d + a * b
     }
     if (a > b) {
         out("a is greater than b")
