@@ -8,6 +8,7 @@
 #include <fstream>
 #include <sstream>
 #include <stdio.h>
+#include <cstring>
 
 int yylex();
 void yyerror(const char *s);
@@ -436,7 +437,7 @@ declaration_stmt: datatype ID declaration{
 };
 
 declaration: {
-	$$ = nullptr
+	$$ = nullptr;
 }
 | ASSIGN expression{
 	$$ = $2;
