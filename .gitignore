@@ -6,3 +6,4 @@ calc
 *.out
 Test_Code/*
 cplt
+.DS_Store
