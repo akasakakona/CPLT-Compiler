@@ -12,7 +12,7 @@ You can either manually type the following command OR using our included `compil
 ```bash
 bison -v -d --file-prefix=y compilot.y
 flex compilot.lex
-gcc -o cplt y.tab.c lex.yy.c -lfl
+g++ -std=c++11 -o cplt y.tab.c lex.yy.c -lfl
 ```
 
 For MacOS Users:
@@ -20,7 +20,7 @@ Replace `-lfl` with `-ll`
 ```bash
 bison -v -d --file-prefix=y compilot.y
 flex compilot.lex
-gcc -o cplt y.tab.c lex.yy.c -ll
+g++ -std=c++11 -o cplt y.tab.c lex.yy.c -ll
 ```
 
 Once the compiler binary has been generated, we can generate the IR using the following command:
