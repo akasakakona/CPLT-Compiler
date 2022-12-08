@@ -1,0 +1,10 @@
+itg b = 10
+itg c = 10
+itg d = 20
+if(b > c){
+    out(b)
+}elf(c > b){
+    out(c)
+}els{
+    out(d)
+}
