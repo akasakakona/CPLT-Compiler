@@ -78,18 +78,6 @@ void delSymbole(std::string a, std::vector<Bucket*>& table){
 	}
 }
 
-/*****
-FIXME: 
-We want to create a newTemp for each variable, because if we don't
-we could have a variable called "t1" that is created by newTemp(), and we can have another
-variable called "t1" that is created by user.
-We also need to store is the scope of the symbol.
-I'll think about how to implement this later.
-We chould do a chained symbol table
-NOTE: Maybe we shouldn't even let the users declare variables
-w/o assignment at all! This only further complicates the code
-*****/
-
 void addSymbol(std::string name, std::string type, std::vector<Bucket*>& table){
 	int i = hash(name);
 	Bucket* temp = table.at(i);
@@ -273,8 +261,9 @@ stmt: {
 	printf(" assignment_stmt\n");
 	$$ = $1;
 	}
- | OUT L_PAREN expression R_PAREN {
+ | OUT L_PAREN expression R_PAREN {//FIXME: needs to complete IN and OUT, this should be available in all bodies
 	printf(" out\n");
+	$$ = new CodeNode;
  }
  | IN L_PAREN expression R_PAREN {
 	printf(" in\n");
@@ -315,6 +304,7 @@ stmt: {
  | COMMENT {printf(" comment\n");}
  ;
 
+//FIXME: needs to be completed
  function_body:declaration_stmt
  | assignment_stmt
  | if_stmt
@@ -334,6 +324,7 @@ stmt: {
  }
  ;
 
+//FIXME: needs to be completed
  loop_body: declaration_stmt
  | assignment_stmt
  | if_stmt
@@ -504,6 +495,7 @@ expression: math_expr{
 }
 ;
 
+//FIXME: needs to be completed
 math_expr: term addop math_expr
 | term 
 ; 
@@ -765,10 +757,6 @@ arguments_ :  {
 	}
 }
 ;
-
-/****
-FIXME: We need to make chained symbol tables
-***/
 
 parameter : {
 	$$ = nullptr;
