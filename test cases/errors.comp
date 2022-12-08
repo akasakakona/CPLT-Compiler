@@ -1,1 +1,33 @@
+itg fnc mult(itg a, itg b) {
+    ret a * b
+}
 
+itg fnc main () {
+    itg a
+    a = 1 + 2
+    b = a - 1
+    itg a
+    itg c[] = {2, 3, 4}
+    itg d
+    d = c + a
+    whl d < 30 {
+        d = mult(a, b)
+    }
+    out(d)
+    if a > b {
+        out("a is greater than b")
+    } elf a == b {
+        out("a is equal to b")
+    }els {
+        out("a is smaller than b")
+    } 
+    
+    ret 0 
+ }
+ 
+@@
+Syntax Errors
+Using a variable without having first declared it
+Calling a function which has not been defined
+Forgetting to specify an array index when using an array variable
+@@
