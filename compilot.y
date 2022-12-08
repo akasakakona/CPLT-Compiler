@@ -178,19 +178,19 @@ std::ofstream fout;
 
 %%
 
-result: function_defs EOL program{
+result: function_defs program{
 	if($1 != nullptr){
 		fout << $1->code << std::endl;
 		printf("%s\n", ($1->code).c_str());
 	}
-	fout << "func main" << std::endl << $3->code << std::endl << "endfunc" << std::endl;
-	printf("func main\n%s\nendfunc\n", ($3->code).c_str());
+	fout << "func main" << std::endl << $2->code << std::endl << "endfunc" << std::endl;
+	printf("func main\n%s\nendfunc\n", ($2->code).c_str());
 }
 
 function_defs : {
 	$$ = nullptr;
 }
-| function_def EOL function_defs{
+| function_def EOL function_defs EOL{
 	$$ = new CodeNode;
 	if($1 != nullptr){
 		$$->code = $1->code + "\n";
