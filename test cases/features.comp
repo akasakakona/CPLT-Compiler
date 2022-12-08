@@ -1,4 +1,4 @@
-itg fnc mult(itg a, itg b,) {
+itg fnc mult(itg a, itg b) {
     ret a * b
 }
 
@@ -9,7 +9,7 @@ itg fnc main () {
     b = a - 1
     itg c[] = {2, 3, 4}
     itg d
-    whl d < 50 {
+    whl d < 30 {
         d = mult(a, b)
     }
     out(d)
