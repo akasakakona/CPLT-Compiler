@@ -82,9 +82,10 @@ void delSymbole(std::string a, std::vector<Bucket*>& table){
 	}
 }
 
-void addSymbol(std::string name, std::string type, std::vector<Bucket*>& table){
+void addSymbol(std::string name, std::string type, std::vector<Bucket*>* table){
 	int i = hash(name);
-	Bucket* temp = table.at(i);
+	Bucket* temp = table->at(i);
+	std::cout << "adding " << name << " to table " << &table << std::endl;
 	while(temp != nullptr){ //check if the symbol is already in the table
 		if(temp->name == name){
 			yyerror("Repeated variable declaration");
@@ -96,13 +97,13 @@ void addSymbol(std::string name, std::string type, std::vector<Bucket*>& table){
 	Bucket* newBucket = new Bucket;
 	newBucket->name = name;
 	newBucket->type = type;
-	newBucket->next = table.at(i);
-	table.at(i) = newBucket;
+	newBucket->next = table->at(i);
+	table->at(i) = newBucket;
 }
 
-Bucket* findSymbol(std::string name, const std::vector<Bucket*>& table){
+Bucket* findSymbol(std::string name, const std::vector<Bucket*>* table){
 	int i = hash(name);
-	Bucket* temp = table.at(i);
+	Bucket* temp = table->at(i);
 	while(temp != nullptr){
 		if(temp->name == name){
 			return temp;
@@ -130,7 +131,7 @@ std::string newLabel(){
 std::vector<std::vector<Bucket*> > symbolTable(1, std::vector<Bucket*>(50, nullptr));
 
 size_t currTableIndex = 0;
-std::vector<Bucket*> currentTable = symbolTable.at(0);
+std::vector<Bucket*>* currentTable = &symbolTable.at(0);
 
 std::ofstream fout;
 
@@ -177,7 +178,7 @@ std::ofstream fout;
 %type <node> function_body loop_bodies function_bodies if_bodies
 %type <node> declaration_stmt parameter if_stmt while_stmt assignment_stmt
 %type <node> expression loop_body declaration data_ else_stmt else_if_stmt
-%type <node> parameter_ if_body data arguments_ array 
+%type <node> parameter_ if_body data arguments_ array funct
 %type <node> datatype bool_expr math_expr boolop term addop mulop factor result
 
 %%
@@ -185,47 +186,61 @@ std::ofstream fout;
 result: function_defs program{
 	printf("	result\n");
 	if($1 != nullptr){
-		fout << $1->code << std::endl;
-		printf("%s\n", ($1->code).c_str());
+		fout << $1->code << std::endl << std::endl;
+		printf("%s\n\n", ($1->code).c_str());
 	}
 	fout << "func main" << std::endl << $2->code << std::endl << "endfunc" << std::endl;
 	printf("func main\n%s\nendfunc\n", ($2->code).c_str());
 }
 
-function_defs : {
+function_defs: {
 	$$ = nullptr;
 }
-| function_def EOL function_defs EOL{
+| function_def EOL function_defs{
+	printf("	function_defs!!!\n");
 	$$ = new CodeNode;
-	if($1 != nullptr){
-		$$->code = $1->code + "\n";
+	$$->code = $1->code;
+	if($3 != nullptr){
+		$$->code += "\n\n" + $3->code;
 	}
-	$$->code += $3->code;
 }
 
-function_def : FUNCTION ID L_PAREN {
-	printf("function\n");
-	if(findSymbol(std::string($2), currentTable) != nullptr){
-		yyerror("ID already declared");
-	}
+funct: FUNCTION ID L_PAREN{
+	//creating and entering a new scope. Therefore creating a new symbol table
 	if(std::string($2) == "main"){
-		yyerror("main function cannot be declared");
+		yyerror("main function cannot be defined");
+	}
+	if(findSymbol(std::string($2), currentTable) != nullptr){
+		yyerror("Repeated function declaration");
 	}
 	addSymbol(std::string($2), "function", currentTable);
-	//creating and entering a new scope. Therefore creating a new symbol table
-	currTableIndex++;
 	symbolTable.push_back(std::vector<Bucket*>(50, nullptr));
-	currentTable = symbolTable.at(currTableIndex);
-	$<node>$ = new CodeNode;
-	$<node>$->code = "func " + std::string($2) + "\n";
-}arguments R_PAREN L_BRACE EOL function_bodies EOL R_BRACE EOL {
-	printf("function\n"); 
-	$$->code += $<node>4->code + $<node>8->code + "endfunc";
+	currTableIndex++;
+	currentTable = &symbolTable.at(currTableIndex);
+	printf("	function_def PUSH BACK SYMBOL TABLE %d\n", currTableIndex);
+	printf("	ID: %s\n", $2);
+	$$ = new CodeNode;
+	$$->code = "func " + std::string($2);
+}
+
+function_def: funct arguments R_PAREN L_BRACE EOL function_bodies R_BRACE {
+	$$ = new CodeNode;
+	$$->code = $1->code;
+	if($2 != nullptr){
+		$$->code += "\n" + $2->code;
+	}
+	$$->code += "\n" + $6->code;
+	if($6->code.find("ret") == std::string::npos){
+		$$->code += "\nret";
+	}
+	$$->code += "\nendfunc";
 	//exiting the scope. Therefore deleting the symbol table
+	std::cout << "function_def POP BACK SYMBOL TABLE " << &symbolTable.at(currTableIndex) << std::endl;
 	symbolTable.pop_back();
 	currTableIndex--;
-	currentTable = symbolTable.at(currTableIndex);
-}
+	currentTable = &symbolTable.at(currTableIndex);
+	printf("	function_def CURRENT TABLE %d\n", currTableIndex);
+};
 
 program: stmt{
 	printf("	program\n");
@@ -251,6 +266,7 @@ stmt: {
 	}
  | ID L_PAREN parameter R_PAREN {
 	if(findSymbol(std::string($1), currentTable) == nullptr){
+		std::cout << "Function " << std::string($1) << " not declared at table " << &symbolTable.at(currTableIndex) << std::endl;
 		yyerror("Function not declared");
 	}
 	if(findSymbol(std::string($1), currentTable)->type != "function"){
@@ -258,7 +274,10 @@ stmt: {
 	}
 	printf(" function_call\n");
 	$$ = new CodeNode;
-	$$->code = $3->code + "\n" + "call " + std::string($1);
+	if($3 != nullptr){
+		$$->code = $3->code + "\n";
+	}
+	$$->code += + "call " + std::string($1);
  }
  | if_stmt {
 	printf(" if_stmt\n");
@@ -351,7 +370,7 @@ if_bodies: {
 function_bodies:{
 	$$ = nullptr;
 }
-| function_body EOL function_bodies EOL{
+| function_body EOL function_bodies{
 	$$ = new CodeNode;
 	$$->code = $1->code;
 	if($3 != nullptr){
@@ -932,7 +951,10 @@ while_stmt: WHILE L_PAREN bool_expr R_PAREN L_BRACE EOL loop_bodies R_BRACE{
 }
 ;
 
-arguments: datatype ID arguments_{
+arguments:{
+	$$ = nullptr;
+}
+ | datatype ID arguments_{
 	$$ = new CodeNode;
 	$$->code = ". " + std::string($2);
 	if($3 != nullptr){
@@ -953,7 +975,7 @@ arguments_ :  {
 }
 ;
 
-parameter : {
+parameter: {
 	$$ = nullptr;
 }
 | NUMBER parameter_ {
@@ -1029,5 +1051,4 @@ int main(int argc, char **argv)
 	yyparse();
 	fout.close();
 	return 0;
-
 }
