@@ -539,7 +539,13 @@ assignment_stmt: ID ASSIGN expression{
 	if($3->type != "int"){
 		yyerror("Type mismatch, array index must be int");
 	}
-	$$->code = $3->code + "\n" + $6->code + "\n[]= " + var->name + ", " + $3->name + ", " + $6->name;
+	if($3->code != ""){
+		$$->code = $3->code + "\n";
+	}
+	if($6->code != ""){
+		$$->code += $6->code + "\n";
+	}
+	$$->code += "[]= " + var->name + ", " + $3->name + ", " + $6->name;
 }
 
 declaration_stmt: datatype ID declaration{
