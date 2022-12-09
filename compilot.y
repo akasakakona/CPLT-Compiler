@@ -9,6 +9,7 @@
 #include <sstream>
 #include <stdio.h>
 #include <cstring>
+#include <stdlib.h>
 
 extern "C" int yylex();
 extern int yyleng;
@@ -97,7 +98,11 @@ void addSymbol(std::string name, std::string type, std::vector<Bucket*>* table){
 	Bucket* newBucket = new Bucket;
 	newBucket->name = name;
 	newBucket->type = type;
-	newBucket->next = table->at(i);
+	if(table->at(i) != nullptr){
+		newBucket->next = table->at(i);
+	}else{
+		newBucket->next = nullptr;
+	}
 	table->at(i) = newBucket;
 }
 
@@ -128,10 +133,22 @@ std::string newLabel(){
 	return temp;
 }
 
+int paramCount = 0;
+
+int newParam(){
+	return paramCount++;
+}
+
+void resetParam(){
+	paramCount = 0;
+}
+
 std::vector<std::vector<Bucket*> > symbolTable(1, std::vector<Bucket*>(50, nullptr));
 
 size_t currTableIndex = 0;
 std::vector<Bucket*>* currentTable = &symbolTable.at(0);
+
+
 
 std::ofstream fout;
 
@@ -239,6 +256,7 @@ function_def: funct arguments R_PAREN L_BRACE EOL function_bodies R_BRACE {
 	symbolTable.pop_back();
 	currTableIndex--;
 	currentTable = &symbolTable.at(currTableIndex);
+	resetParam();
 	printf("	function_def CURRENT TABLE %d\n", currTableIndex);
 };
 
@@ -307,7 +325,10 @@ stmt: {
 	$$ = new CodeNode;
 	$$->code = ".< " + std::string($3);
 	}
- | COMMENT {printf(" comment\n");}
+ | COMMENT {
+	$$ = nullptr;
+	printf(" comment\n");
+	}
  ;
 
 if_bodies: {
@@ -348,7 +369,10 @@ if_bodies: {
 	printf(" assignment_stmt\n");
 	$$ = $1;
 	}
- | COMMENT {printf(" comment\n");}
+ | COMMENT {
+	printf(" comment\n");
+	$$ = nullptr;
+	}
  | OUT L_PAREN ID R_PAREN {
 	printf("	out\n");
 	if(findSymbol(std::string($3), currentTable) == nullptr){
@@ -717,7 +741,9 @@ bool_expr: math_expr boolop math_expr{
 | ID{
 	Bucket* var = findSymbol(std::string($1), currentTable);
 	if(var == nullptr){
-		yyerror("Undeclared variable");
+		char error[100] = "Undeclared variable: ";
+		strcat(error, $1);
+		yyerror(error);
 	}
 	if(var->type != "bool"){
 		yyerror("Type mismatch! Boolean expected");
@@ -831,7 +857,9 @@ factor: L_PAREN math_expr R_PAREN{
 | ID{
 	Bucket* var = findSymbol(std::string($1), currentTable);
 	if(var == nullptr){
-		yyerror("Undeclared variable");
+		char error[100] = "Undeclared variable: ";
+		strcat(error, $1);
+		yyerror(error);
 	}
 	$$ = new CodeNode;
 	$$->type = var->type;
@@ -859,7 +887,9 @@ data : NUMBER{
 | ID{
 	Bucket* var = findSymbol(std::string($1), currentTable);
 	if(var == nullptr){
-		yyerror("Undeclared variable");
+		char error[100] = "Undeclared variable: ";
+		strcat(error, $1);
+		yyerror(error);
 	}
 	if(var->type != "int"){ //only int arrays are allowed
 		yyerror("Type mismatch. Arrays must be of type int");
@@ -956,7 +986,13 @@ arguments:{
 }
  | datatype ID arguments_{
 	$$ = new CodeNode;
-	$$->code = ". " + std::string($2);
+	if(findSymbol(std::string($2), currentTable) != nullptr){
+		char error[100] = "Variable already declared: ";
+		strcat(error, $2);
+		yyerror(error);
+	}
+	addSymbol(std::string($2), $1->type, currentTable);
+	$$->code = ". " + std::string($2) + "\n= " + std::string($2) + ", $" + std::to_string(newParam());
 	if($3 != nullptr){
 		$$->code += "\n" + $3->code;
 	}
@@ -988,7 +1024,9 @@ parameter: {
 | ID parameter_ {
 	Bucket* var = findSymbol(std::string($1), currentTable);
 	if(var == nullptr){
-		yyerror("Undeclared variable");
+		char error[100] = "Undeclared variable: ";
+		strcat(error, $1);
+		yyerror(error);
 	}
 	$$ = new CodeNode;
 	$$->code = "param " + var->name;
@@ -1011,7 +1049,9 @@ parameter_ : {
 | COMMA ID parameter_ {
 	Bucket* var = findSymbol(std::string($2), currentTable);
 	if(var == nullptr){
-		yyerror("Undeclared variable");
+		char error[100] = "Undeclared variable: ";
+		strcat(error, $2);
+		yyerror(error);
 	}
 	$$ = new CodeNode();
 	$$->code = "param " + var->name;
