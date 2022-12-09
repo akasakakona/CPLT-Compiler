@@ -18,7 +18,7 @@ itg y
 x = 5
 y = 3
 
-if (x > 6){}
+if(x > 6){ }
 ```
 - [x] While or do-while loops
 ```bash
@@ -45,12 +45,12 @@ whl (flag) {
 itg a = 10
 itg b = 5
 
-if (a > b) {
-  out("a is greater than b")
-} elf (a == b)
-  out("a is equal to b")
-} els {
-  out("a is smaller than b")
+if(a > b) {
+  out(a)
+}elf(a == b) {
+  out(b)
+}els{
+  out(a)
 }
 ```
 - [x] Read and write statements
@@ -68,10 +68,10 @@ THIS IS MULTI LINE COMMENT
 ```
 - [x] Function
 ```bash
-itg fnc sum3 (itg a, itg b, itg c) {
+fnc sum3 (itg a,itg b,itg c) {
   ret a + b + c
 }
-sum3(1, 2, 3)
+sum3(1,2,3)
 ```
 
 # Code Generator
