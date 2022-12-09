@@ -1,9 +1,6 @@
 # Language Features
 - [x] Integer scale variables
-```bash
-itg x
-itg y
-```
+`itg x`
 - [x] 1-D array of integers 
 `itg a[] = {1, 2, 3}`
 - [x] Assignment statements
@@ -12,9 +9,6 @@ itg y
 ```bash
 itg x
 x = 3 + 2
-x = 2 - 1
-x = 4 * 4
-x = 12 / 6
 ```
 - [x] Relational operators
 ```bash
@@ -24,10 +18,7 @@ itg y
 x = 5
 y = 3
 
-x > 6
-x != y 
-y < 3
-x == y
+if (x > 6){}
 ```
 - [x] While or do-while loops
 ```bash
@@ -37,18 +28,44 @@ itg y
 x = 5
 y = 3
 
-whl x > 6 {
-  y = y + 1
-}
-
 whl x != y {
-  y = y + 1
+  x = x - 1
 }
 ```
-- [x] Break statement
+- [x] Break statement 
+```bash
+bln flag = true 
+
+whl (flag) {
+  brk
+}
+```
 - [x] If-then-else statements
+```bash
+itg a = 10
+itg b = 5
+
+if (a > b) {
+  out("a is greater than b")
+} elf (a == b)
+  out("a is equal to b")
+} els {
+  out("a is smaller than b")
+}
+```
 - [x] Read and write statements
+```bash
+itg a = 3
+in()
+out(a)
+```
 - [x] Comments
+`@ block comment @ `
+```bash
+@@
+THIS IS MULTI LINE COMMENT
+@@
+```
 - [x] Function
 
 # Code Generator
@@ -85,3 +102,5 @@ Once IR has been generated, we can run it using the included `mil_run` binary fi
 `./mil_run mil_code.mil`.
 
 **Note:** Since `mil_run` is an x64 binary, this can only be done on an x64 machine.
+
+## Demo Video: 
