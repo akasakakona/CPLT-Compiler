@@ -956,14 +956,14 @@ if_stmt: IF L_PAREN bool_expr R_PAREN L_BRACE EOL if_bodies R_BRACE else_if_stmt
 else_stmt :{
 	$$ = nullptr;
 }
-| ELSE L_BRACE EOL if_bodies EOL R_BRACE{
+| ELSE L_BRACE EOL if_bodies R_BRACE{
 	$$ = $4;
 }
 
 else_if_stmt: {
 	$$ = nullptr;
 }
-| ELSE_IF L_PAREN bool_expr R_PAREN L_BRACE EOL if_bodies EOL R_BRACE else_if_stmt{
+| ELSE_IF L_PAREN bool_expr R_PAREN L_BRACE EOL if_bodies R_BRACE else_if_stmt{
 	$$ = new CodeNode;
 	std::string tempLabel1 = newLabel();
 	$$->code = $3->code + "\n! " + $3->name + ", " + $3->name + "\n";
