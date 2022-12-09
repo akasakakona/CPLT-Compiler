@@ -18,3 +18,5 @@ itg fnc mult(itg a, itg b) {
     
     ret d
  }
+ 
+ mult()
