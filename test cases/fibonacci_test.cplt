@@ -3,7 +3,6 @@ itg n
 
 in(n)
      
-itg i
 itg i = 2
  
 f[0] = 0
