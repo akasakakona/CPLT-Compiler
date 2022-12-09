@@ -931,9 +931,9 @@ if_stmt: IF L_PAREN bool_expr R_PAREN L_BRACE EOL if_bodies R_BRACE else_if_stmt
 	//go to the end of the if statement
     //generate a new label to go to if the bool_expr is false
 	$$->code += "?:= " + tempLabel1 + ", " + $3->name + "\n" + $7->code + "\n:= " + tempLabel2 + "\n: " + tempLabel1;
-	if($10 != nullptr){
-		changeLabel($10->code, tempLabel2); //change TEMPLABEL to go to the end of if statement
-		$$->code += "\n" + $10->code;
+	if($9 != nullptr){
+		changeLabel($9->code, tempLabel2); //change TEMPLABEL to go to the end of if statement
+		$$->code += "\n" + $9->code;
 	}
 	if($10 != nullptr){
 		//since this is else statement
