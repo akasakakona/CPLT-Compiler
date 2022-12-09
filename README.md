@@ -28,7 +28,7 @@ itg y
 x = 5
 y = 3
 
-whl x != y {
+whl (x != y) {
   x = x - 1
 }
 ```
@@ -67,6 +67,12 @@ THIS IS MULTI LINE COMMENT
 @@
 ```
 - [x] Function
+```bash
+itg fnc sum3 (itg a, itg b, itg c) {
+  ret a + b + c
+}
+sum3(1, 2, 3)
+```
 
 # Code Generator
 
