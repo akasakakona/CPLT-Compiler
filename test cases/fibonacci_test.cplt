@@ -1,20 +1,21 @@
 itg f[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-itg n
-
-in(n)
      
 itg i = 2
  
 f[0] = 0
 f[1] = 1
+itg b = 0
+itg c = 0
  
-whl (i <= n) { 
-    f[i] = f[i - 1] + f[i - 2]
+whl (i <= 10) { 
+    b = f[i - 1]
+    c = f[i - 2]
+    f[i] = b + c
     i = i + 1
 }
     
-itg fib
-fib = f[n]
+itg fib = 0
+fib = f[10]
 out(fib)
 
 @@
