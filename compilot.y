@@ -689,7 +689,7 @@ expression: math_expr{
 ;
 
 //FIXME: needs to be completed
-math_expr: term addop math_expr{
+math_expr: math_expr addop term {
 	$$ = new CodeNode;
 	if($1->type != "int" || $3->type != "int"){
 		yyerror("type mismatch");
@@ -712,7 +712,7 @@ math_expr: term addop math_expr{
 }
 ; 
 
-bool_expr: math_expr boolop math_expr{
+bool_expr: expression boolop expression{
 	$$ = new CodeNode;
 	if($1->type != "int" || $3->type != "int"){
 		yyerror("type mismatch");
@@ -770,7 +770,7 @@ bool_expr: math_expr boolop math_expr{
 	while(iss >> token){
 		$$->code += "param " + token + "\n";
 	}
-	$$->code += "call " + std::string($1) + ", " + $$->name + "\n";
+	$$->code += "call " + std::string($1) + ", " + $$->name;
 }
 ;
 
@@ -826,7 +826,7 @@ term: term mulop factor{
 	if($3->code != ""){
 		$$->code += $3->code + "\n";
 	}
-	$$->code += $2->name + " " + $$->name + ", " + $1->name + ", " + $3->name + "\n";
+	$$->code += $2->name + " " + $$->name + ", " + $1->name + ", " + $3->name;
 }
 | factor{
 	printf("	factor: %s", $1->name.c_str());
