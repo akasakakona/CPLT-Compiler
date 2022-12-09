@@ -20,6 +20,8 @@ itg fnc mult() {
     ret d
  }
  
+mult()
+
 @@
 Syntax Errors
 Using a variable without having first declared it
