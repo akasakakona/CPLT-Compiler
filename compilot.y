@@ -13,6 +13,8 @@
 
 extern "C" int yylex();
 extern int yyleng;
+extern int yylineno;
+
 extern FILE *yyin;
 extern char* yytext;
 
@@ -1070,12 +1072,11 @@ parameter_ : {
 %%
 
 void yyerror(const char *s) {
-	fprintf(stderr, "ERROR: %s\n", s);
+	fprintf(stderr, "ERROR LINE %d: %s\n", yylineno, s);
 	exit(1);
 };
 
 std::string mycont(char* a, char* b){
-
 	strcat(a,b);
 	return a;
 }

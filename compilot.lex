@@ -7,6 +7,8 @@
 	int num = 0;
 %}
 
+%option noyywrap noinput nounput yylineno
+
 COMMENT (@.*|@@(.|\n)*@@)
 INTEGER itg
 FUNCTION fnc
