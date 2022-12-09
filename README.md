@@ -56,7 +56,7 @@ if(a > b) {
 - [x] Read and write statements
 ```bash
 itg a = 3
-in()
+in(a)
 out(a)
 ```
 - [x] Comments
