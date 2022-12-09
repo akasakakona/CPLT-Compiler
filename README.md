@@ -3,13 +3,48 @@
 ```bash
 itg x
 itg y
-itg sum
 ```
 - [x] 1-D array of integers 
+`itg a[] = {1, 2, 3}`
 - [x] Assignment statements
+`itg x = 5`
 - [x] Arithmetic operators
+```bash
+itg x
+x = 3 + 2
+x = 2 - 1
+x = 4 * 4
+x = 12 / 6
+```
 - [x] Relational operators
+```bash
+itg x
+itg y
+
+x = 5
+y = 3
+
+x > 6
+x != y 
+y < 3
+x == y
+```
 - [x] While or do-while loops
+```bash
+itg x
+itg y
+
+x = 5
+y = 3
+
+whl x > 6 {
+  y = y + 1
+}
+
+whl x != y {
+  y = y + 1
+}
+```
 - [x] Break statement
 - [x] If-then-else statements
 - [x] Read and write statements
