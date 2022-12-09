@@ -1,0 +1,4 @@
+itg a = 2
+itg b = 3
+itg a = 4
+cout(a)
