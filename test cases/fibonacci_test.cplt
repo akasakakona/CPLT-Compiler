@@ -1,22 +1,16 @@
-itg f[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-itg n
-
-in(n)
-     
-itg i = 2
- 
-f[0] = 0
-f[1] = 1
- 
-whl (i <= n) { 
-    f[i] = f[i - 1] + f[i - 2]
-    i = i + 1
+fnc fib(itg a){
+    itg i = 2
+    itg b = 0
+    out(b)
+    itg c = 1
+    out(c)
+    itg d = 0
+    whl(i < a){
+        d = b + c
+        out(d)
+        b = c
+        c = d
+        i = i + 1
+    }
 }
-    
-itg fib
-fib = f[n]
-out(fib)
-
-@@
-array goes up to 10
-@@
+fib(10)
