@@ -88,7 +88,6 @@ void delSymbole(std::string a, std::vector<Bucket*>& table){
 void addSymbol(std::string name, std::string type, std::vector<Bucket*>* table){
 	int i = hash(name);
 	Bucket* temp = table->at(i);
-	std::cout << "adding " << name << " to table " << &table << std::endl;
 	while(temp != nullptr){ //check if the symbol is already in the table
 		if(temp->name == name){
 			yyerror("Repeated variable declaration");
@@ -203,20 +202,17 @@ std::ofstream fout;
 %%
 
 result: function_defs program{
-	printf("	result\n");
 	if($1 != nullptr){
 		fout << $1->code << std::endl << std::endl;
-		printf("%s\n\n", ($1->code).c_str());
 	}
 	fout << "func main" << std::endl << $2->code << std::endl << "endfunc" << std::endl;
-	printf("func main\n%s\nendfunc\n", ($2->code).c_str());
+	printf("Code generated successfully!\n");
 }
 
 function_defs: {
 	$$ = nullptr;
 }
 | function_def EOL function_defs{
-	printf("	function_defs!!!\n");
 	$$ = new CodeNode;
 	$$->code = $1->code;
 	if($3 != nullptr){
@@ -236,8 +232,6 @@ funct: FUNCTION ID L_PAREN{
 	symbolTable.push_back(std::vector<Bucket*>(50, nullptr));
 	currTableIndex++;
 	currentTable = &symbolTable.at(currTableIndex);
-	printf("	function_def PUSH BACK SYMBOL TABLE %d\n", currTableIndex);
-	printf("	ID: %s\n", $2);
 	$$ = new CodeNode;
 	$$->code = "func " + std::string($2);
 }
@@ -254,16 +248,13 @@ function_def: funct arguments R_PAREN L_BRACE EOL function_bodies R_BRACE {
 	}
 	$$->code += "\nendfunc";
 	//exiting the scope. Therefore deleting the symbol table
-	std::cout << "function_def POP BACK SYMBOL TABLE " << &symbolTable.at(currTableIndex) << std::endl;
 	symbolTable.pop_back();
 	currTableIndex--;
 	currentTable = &symbolTable.at(currTableIndex);
 	resetParam();
-	printf("	function_def CURRENT TABLE %d\n", currTableIndex);
 };
 
 program: stmt{
-	printf("	program\n");
 	$$ = $1;
 }
 | program EOL stmt{
@@ -281,18 +272,15 @@ stmt: {
 	$$ = nullptr;
 }
  | declaration_stmt {
-	printf("	declaration_stmt\n");
 	$$ = $1;
 	}
  | ID L_PAREN parameter R_PAREN {
 	if(findSymbol(std::string($1), currentTable) == nullptr){
-		std::cout << "Function " << std::string($1) << " not declared at table " << &symbolTable.at(currTableIndex) << std::endl;
 		yyerror("Function not declared");
 	}
 	if(findSymbol(std::string($1), currentTable)->type != "function"){
 		yyerror("Not a function");
 	}
-	printf(" function_call\n");
 	$$ = new CodeNode;
 	if($3 != nullptr){
 		$$->code = $3->code + "\n";
@@ -301,19 +289,15 @@ stmt: {
 	$$->code += ". " + temp + "\n" + "call " + std::string($1) + ", " + temp;
 	}
  | if_stmt {
-	printf(" if_stmt\n");
 	$$ = $1;
 	}
  | while_stmt {
-	printf(" while_stmt\n");
 	$$ = $1;
 	}
  | assignment_stmt {
-	printf(" assignment_stmt\n");
 	$$ = $1;
 	}
  | OUT L_PAREN ID R_PAREN {
-	printf("	out\n");
 	if(findSymbol(std::string($3), currentTable) == nullptr){
 		yyerror("Variable not declared");
 	}
@@ -321,7 +305,6 @@ stmt: {
 	$$->code = ".> " + std::string($3);
 	}
  | IN L_PAREN ID R_PAREN {
-	printf("	in\n");
 	if(findSymbol(std::string($3), currentTable) == nullptr){
 		yyerror("Variable not declared");
 	}
@@ -330,7 +313,6 @@ stmt: {
 	}
  | COMMENT {
 	$$ = nullptr;
-	printf(" comment\n");
 	}
  ;
 
@@ -346,7 +328,6 @@ if_bodies: {
 }
 
  if_body: declaration_stmt {
-	printf(" declaration_stmt\n");
 	$$ = $1;
     }
  | ID L_PAREN parameter R_PAREN {
@@ -356,28 +337,22 @@ if_bodies: {
 	if(findSymbol(std::string($1), currentTable)->type != "function"){
 		yyerror("Not a function");
 	}
-	printf(" function_call\n");
 	$$ = new CodeNode;
 	$$->code = $3->code + "\n" + "call " + std::string($1) + ", " +  newTemp();
 	}
  | if_stmt {
-	printf(" if_stmt\n");
 	$$ = $1;
 	}
  | while_stmt {
-	printf(" while_stmt\n");
 	$$ = $1;
 	}
  | assignment_stmt {
-	printf(" assignment_stmt\n");
 	$$ = $1;
 	}
  | COMMENT {
-	printf(" comment\n");
 	$$ = nullptr;
 	}
  | OUT L_PAREN ID R_PAREN {
-	printf("	out\n");
 	if(findSymbol(std::string($3), currentTable) == nullptr){
 		yyerror("Variable not declared");
 	}
@@ -385,7 +360,6 @@ if_bodies: {
 	$$->code = ".> " + std::string($3);
 	}
  | IN L_PAREN ID R_PAREN {
-	printf("	in\n");
 	if(findSymbol(std::string($3), currentTable) == nullptr){
 		yyerror("Variable not declared");
 	}
@@ -418,7 +392,6 @@ function_bodies:{
 	$$ = $1;
  }
  | RETURN expression {
-	printf(" return\n");
 	$$ = new CodeNode;
 	if($2->code != ""){
 		$$->code = $2->code + "\n";
@@ -430,7 +403,6 @@ function_bodies:{
 	$$->code = "ret";
 	}
  | ID L_PAREN parameter R_PAREN {
-	printf(" function_call\n");
 	if(findSymbol(std::string($1), currentTable) == nullptr){
 		yyerror("Function not declared");
 	}
@@ -441,7 +413,6 @@ function_bodies:{
 	$$ = nullptr;
  }
  | OUT L_PAREN ID R_PAREN {
-	printf("	out\n");
 	if(findSymbol(std::string($3), currentTable) == nullptr){
 		yyerror("Variable not declared");
 	}
@@ -449,7 +420,6 @@ function_bodies:{
 	$$->code = ".> " + std::string($3);
 	}
  | IN L_PAREN ID R_PAREN {
-	printf("	in\n");
 	if(findSymbol(std::string($3), currentTable) == nullptr){
 		yyerror("Variable not declared");
 	}
@@ -458,13 +428,10 @@ function_bodies:{
 	}
  ;
 
-//FIXME: needs to be completed
 loop_bodies: {
-	printf(" empty loop_bodies\n");
 	$$ = nullptr;
 }
 | loop_body EOL loop_bodies{
-	printf("		loop_bodies\n");
 	$$ = new CodeNode;
 	$$->code = $1->code;
 	if($3 != nullptr){
@@ -488,7 +455,6 @@ loop_bodies: {
 	$$ = nullptr;
  }
  | ID L_PAREN parameter R_PAREN {
-	printf(" function_call\n");
 	if(findSymbol(std::string($1), currentTable) == nullptr){
 		yyerror("Function not declared");
 	}
@@ -496,12 +462,10 @@ loop_bodies: {
 	$$->code = $3->code + "\n" + "call " + std::string($1) + ", " + newTemp();
 	}
  | BREAK {
-	printf("break");
 	$$ = new CodeNode;
 	$$->code = ":= TEMPLABEL";
 	}
  | OUT L_PAREN ID R_PAREN {
-	printf("	out\n");
 	if(findSymbol(std::string($3), currentTable) == nullptr){
 		yyerror("Variable not declared");
 	}
@@ -509,7 +473,6 @@ loop_bodies: {
 	$$->code = ".> " + std::string($3);
 	}
  | IN L_PAREN ID R_PAREN {
-	printf("	in\n");
 	if(findSymbol(std::string($3), currentTable) == nullptr){
 		yyerror("Variable not declared");
 	}
@@ -633,7 +596,6 @@ declaration: {
 ;
 
 datatype: INTEGER{
-	printf("	integer\n");
 	$$ = new CodeNode;
 	$$->type = "int";
 }
@@ -644,7 +606,6 @@ datatype: INTEGER{
 ;
 
 expression: math_expr{
-	printf("	math_expr:%s", $$->name.c_str());
 	$$ = $1;
 }
 | ID L_PAREN parameter R_PAREN {
@@ -717,7 +678,6 @@ math_expr: math_expr addop term {
 	$$->type = "int";
 }
 | term {
-	printf("	term");
 	$$ = $1;
 }
 ; 
@@ -839,7 +799,6 @@ term: term mulop factor{
 	$$->code += $2->name + " " + $$->name + ", " + $1->name + ", " + $3->name;
 }
 | factor{
-	printf("	factor: %s", $1->name.c_str());
 	$$ = $1;
 }
 ;
@@ -858,7 +817,6 @@ factor: L_PAREN math_expr R_PAREN{
 	$$ = $2;
 }
 | NUMBER{
-	printf("	NUMBER: %s", $1);
 	$$ = new CodeNode;
 	$$->type = "int";
 	$$->name = std::string($1);
