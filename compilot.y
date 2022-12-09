@@ -297,8 +297,9 @@ stmt: {
 	if($3 != nullptr){
 		$$->code = $3->code + "\n";
 	}
-	$$->code += + "call " + std::string($1);
- }
+	std::string temp = newTemp();
+	$$->code += ". " + temp + "\n" + "call " + std::string($1) + ", " + temp;
+	}
  | if_stmt {
 	printf(" if_stmt\n");
 	$$ = $1;
@@ -357,7 +358,7 @@ if_bodies: {
 	}
 	printf(" function_call\n");
 	$$ = new CodeNode;
-	$$->code = $3->code + "\n" + "call " + std::string($1);
+	$$->code = $3->code + "\n" + "call " + std::string($1) + ", " +  newTemp();
 	}
  | if_stmt {
 	printf(" if_stmt\n");
@@ -419,7 +420,10 @@ function_bodies:{
  | RETURN expression {
 	printf(" return\n");
 	$$ = new CodeNode;
-	$$->code = $2->code + "\n" + "ret " + $2->code;
+	if($2->code != ""){
+		$$->code = $2->code + "\n";
+	}
+	$$->code += "ret " + $2->name;
 	}
  | RETURN{
 	$$ = new CodeNode;
@@ -431,7 +435,7 @@ function_bodies:{
 		yyerror("Function not declared");
 	}
 	$$ = new CodeNode;
-	$$->code = $3->code + "\n" + "call " + std::string($1);
+	$$->code = $3->code + "\n" + "call " + std::string($1) + ", " + newTemp();
 	}
  | COMMENT{
 	$$ = nullptr;
@@ -489,7 +493,7 @@ loop_bodies: {
 		yyerror("Function not declared");
 	}
 	$$ = new CodeNode;
-	$$->code = $3->code + "\n" + "call " + std::string($1);
+	$$->code = $3->code + "\n" + "call " + std::string($1) + ", " + newTemp();
 	}
  | BREAK {
 	printf("break");
@@ -551,7 +555,6 @@ assignment_stmt: ID ASSIGN expression{
 }
 
 declaration_stmt: datatype ID declaration{
-	printf("	val:%s\n", $3->name.c_str());
 	if(findSymbol(std::string($2), currentTable) != nullptr){
 		yyerror("redeclaration of variable");
 	}
@@ -715,7 +718,6 @@ math_expr: math_expr addop term {
 }
 | term {
 	printf("	term");
-	$$ = new CodeNode;
 	$$ = $1;
 }
 ; 
@@ -838,7 +840,6 @@ term: term mulop factor{
 }
 | factor{
 	printf("	factor: %s", $1->name.c_str());
-	$$ = new CodeNode;
 	$$ = $1;
 }
 ;
@@ -1013,6 +1014,13 @@ arguments_ :  {
 | COMMA datatype ID arguments_{
 	$$ = new CodeNode;
 	$$->code = ". " + std::string($3);
+	if(findSymbol(std::string($3), currentTable) != nullptr){
+		char error[100] = "Variable already declared: ";
+		strcat(error, $3);
+		yyerror(error);
+	}
+	addSymbol(std::string($3), $2->type, currentTable);
+	$$->code = ". " + std::string($3) + "\n= " + std::string($3) + ", $" + std::to_string(newParam());
 	if($4 != nullptr){
 		$$->code += "\n" + $4->code;
 	}

@@ -7,14 +7,10 @@ fnc mult(itg a, itg b) {
         d = d + a * b
     }
     if (a > b) {
-        out("a is greater than b")
+        out(a)
     } elf (a == b) {
-        out("a is equal to b")
-    } els {
-        out("a is smaller than b")
-    } 
-    
+        out(b)
+    }
     ret d
- }
- 
- mult(2, 3)
+}
+mult(2, 3)
