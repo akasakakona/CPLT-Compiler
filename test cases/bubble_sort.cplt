@@ -6,7 +6,7 @@
  whl (i < n - 1) {
     whl (j < n - i - 1) {
         if (a[j] > a[j + 1]) {
-            temp = j
+            temp = a[j]
             a[j] = a[j + 1]
             a[j + 1] = temp
         }
