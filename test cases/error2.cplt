@@ -1,4 +1,4 @@
-itg a[] = {2,4,6}
+itg a[] = {2,5,6}
 itg b = 5
 itg c = a + b
 out(c)
