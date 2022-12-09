@@ -1,1 +1,5 @@
-
+fnc multFive(itg a){
+    itg b = a * 5
+    out(b)
+}
+multFive(3)
