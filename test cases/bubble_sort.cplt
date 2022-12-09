@@ -8,8 +8,8 @@
     
  i = 0
  j = 0
- whl i < n - 1 {
-    whl j < n - i - 1 {
+ whl (i < n - 1) {
+    whl (j < n - i - 1) {
         if (a[j] > a[j + 1]) {
             itg temp = j
             a[j] == a[j + 1]
@@ -21,7 +21,7 @@
 }
    
 i = 0
-whl i < n {
+whl (i < n) {
     out(a[i])
     out(" ")
     i = i + 1

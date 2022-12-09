@@ -1,3 +1,79 @@
+# Language Features
+- [x] Integer scale variables
+`itg x`
+- [x] 1-D array of integers 
+`itg a[] = {1, 2, 3}`
+- [x] Assignment statements
+`itg x = 5`
+- [x] Arithmetic operators
+```bash
+itg x
+x = 3 + 2
+```
+- [x] Relational operators
+```bash
+itg x
+itg y
+
+x = 5
+y = 3
+
+if (x > 6){}
+```
+- [x] While or do-while loops
+```bash
+itg x
+itg y
+
+x = 5
+y = 3
+
+whl (x != y) {
+  x = x - 1
+}
+```
+- [x] Break statement 
+```bash
+bln flag = true 
+
+whl (flag) {
+  brk
+}
+```
+- [x] If-then-else statements
+```bash
+itg a = 10
+itg b = 5
+
+if (a > b) {
+  out("a is greater than b")
+} elf (a == b)
+  out("a is equal to b")
+} els {
+  out("a is smaller than b")
+}
+```
+- [x] Read and write statements
+```bash
+itg a = 3
+in()
+out(a)
+```
+- [x] Comments
+`@ block comment @ `
+```bash
+@@
+THIS IS MULTI LINE COMMENT
+@@
+```
+- [x] Function
+```bash
+itg fnc sum3 (itg a, itg b, itg c) {
+  ret a + b + c
+}
+sum3(1, 2, 3)
+```
+
 # Code Generator
 
 This part of the project translates parsed code into intermediate representation (IR), so that we can further translate it into assembly language later on.
@@ -32,3 +108,5 @@ Once IR has been generated, we can run it using the included `mil_run` binary fi
 `./mil_run mil_code.mil`.
 
 **Note:** Since `mil_run` is an x64 binary, this can only be done on an x64 machine.
+
+## Demo Video: 
