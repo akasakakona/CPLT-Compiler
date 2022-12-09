@@ -1,0 +1,4 @@
+fnc main(){
+    out()
+}
+main()
