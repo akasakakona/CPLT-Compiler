@@ -110,3 +110,5 @@ Once IR has been generated, we can run it using the included `mil_run` binary fi
 **Note:** Since `mil_run` is an x64 binary, this can only be done on an x64 machine.
 
 ## Demo Video: 
+
+https://youtu.be/fdEdgnj5qgQ
