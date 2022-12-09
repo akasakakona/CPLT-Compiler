@@ -1,9 +1,9 @@
-  itg a[] = {5, 1, 4, 2, 8}
- itg n = 5
- itg i = 0
- itg j = 0
- itg temp = 0
- whl (i < n - 1) {
+itg a[] = {5, 1, 4, 2, 8}
+itg n = 5
+itg i = 0
+itg j = 0
+itg temp = 0
+whl (i < n - 1) {
     whl (j < n - i - 1) {
         if (a[j] > a[j + 1]) {
             temp = a[j]
