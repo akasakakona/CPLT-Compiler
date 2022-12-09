@@ -1,6 +1,7 @@
-fnc mult(itg a, itg b) {
+fnc mult(itg a) {
     a = a + 2
-    b = b - 1
+    itg b
+    b = a - 1
     itg c[] = {2, 3, 4}
     itg d
     whl (d < 30) {
@@ -17,4 +18,4 @@ fnc mult(itg a, itg b) {
     ret d
  }
  
- mult(2, 3)
+ mult(2)
