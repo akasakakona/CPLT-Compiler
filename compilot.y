@@ -334,7 +334,7 @@ stmt: {
 if_bodies: {
 	$$ = nullptr;
 }
-| if_body EOL if_bodies EOL {
+| if_body EOL if_bodies {
 	$$ = new CodeNode;
 	$$->code = $1->code;
 	if($3 != nullptr){
@@ -917,7 +917,7 @@ data_: {
 }
 ;
 
-if_stmt: IF L_PAREN bool_expr R_PAREN L_BRACE EOL if_bodies EOL R_BRACE else_if_stmt else_stmt{
+if_stmt: IF L_PAREN bool_expr R_PAREN L_BRACE EOL if_bodies R_BRACE else_if_stmt else_stmt{
 	std::string tempLabel1 = newLabel();
 	std::string tempLabel2 = newLabel();
 	$$ = new CodeNode;
@@ -935,12 +935,12 @@ if_stmt: IF L_PAREN bool_expr R_PAREN L_BRACE EOL if_bodies EOL R_BRACE else_if_
 		changeLabel($10->code, tempLabel2); //change TEMPLABEL to go to the end of if statement
 		$$->code += "\n" + $10->code;
 	}
-	if($11 != nullptr){
+	if($10 != nullptr){
 		//since this is else statement
 		//it automatically goes to the end of the if statement
 		//once it is done executing
 		//therefore, no need to change the label
-		$$->code += "\n" + $11->code;
+		$$->code += "\n" + $10->code;
 	}
 	$$->code += "\n: " + tempLabel2; //set the end of the if statement
 };
