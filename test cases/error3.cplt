@@ -1,0 +1,4 @@
+itg a[] = {1,2,3}
+itg b = 5
+itg c = a[8] + b
+out(c)
